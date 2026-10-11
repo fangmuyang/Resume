@@ -7,12 +7,15 @@
  *
  * 两者共用这里的同一套 schema 与同一份规则，不会出现"校验标准不一致"。
  */
+import { parseFrontmatter } from './post-frontmatter';
 import {
   parseWithContext,
+  postFrontmatterSchema,
   profileSchema,
   projectSchema,
   resumeSchema,
   skillGroupsSchema,
+  type PostMeta,
   type Profile,
   type Project,
   type Resume,
@@ -28,6 +31,15 @@ export const CONTENT_FILES = {
 
 /** 作品集详情放在这个子目录下，文件名即 slug */
 export const PROJECTS_DIR = 'projects';
+
+/** 文章放在这个子目录下，文件名即 slug */
+export const POSTS_DIR = 'posts';
+
+/** 构建期生成的文章索引（相对 content/），由 scripts/build-posts-index.ts 产出 */
+export const POSTS_INDEX_FILE = 'posts-index.json';
+
+// 转发 schema，方便脚本只从本模块导入（脚本与本模块共用同一套契约）
+export { postIndexSchema, postFrontmatterSchema } from './schema';
 
 /**
  * 读取原始内容的函数签名。
@@ -51,6 +63,54 @@ function byOrderThenName(a: Project, b: Project): number {
 /** 校验单个作品集文件 */
 export function validateProject(raw: unknown, source: string): Project {
   return parseWithContext(projectSchema, raw, source);
+}
+
+/**
+ * 统计正文的"可读字数"，估算阅读分钟数。
+ *
+ * 中英文混排按字符估算：中文约 300 字/分钟，英文约 200 词/分钟。
+ * 关键是**基于正文而不是摘要** —— 摘要写在 frontmatter 里，
+ * 与正文长度没有稳定关系，拿它估算会明显失真。
+ */
+export function estimateReadingMinutes(content: string): number {
+  // 去掉 frontmatter 与代码块：代码读起来比散文慢，纳入统计会高估阅读速度
+  const prose = content
+    .replace(/^---[\s\S]*?---/, '')
+    .replace(/```[\s\S]*?```/g, '')
+    .replace(/<[^>]+>/g, '');
+
+  const chineseChars = (prose.match(/[\u4E00-\u9FFF]/g) ?? []).length;
+  const latinWords = (prose.match(/[A-Za-z]+/g) ?? []).length;
+
+  return Math.max(1, Math.round(chineseChars / 300 + latinWords / 200));
+}
+
+/**
+ * 校验一篇 MDX 文章的 frontmatter。
+ *
+ * 输入是**文件全文**（不是解析后的对象），有两个好处：
+ * 1. 能检查 frontmatter 区块是否真的存在 —— 缺少 `---` 时 Zod 只会报
+ *    "title 缺失"，而真正的原因往往是你忘了写 frontmatter；
+ * 2. 能顺带算出阅读时长。而这个值必须在**构建期**确定：
+ *    浏览器侧拿不到原始文本（MDX 已被编译成组件），
+ *    若用 `?raw` 再读一次文件，MDX 插件会把那段原始文本也当代码编译，
+ *    里面的代码示例（含 import 语句）会被 Rollup 当成真实导入而报错。
+ */
+export function validatePost(source: string, slug: string, filePath: string): PostMeta {
+  const { data } = parseFrontmatter(source);
+
+  if (Object.keys(data).length === 0) {
+    throw new Error(
+      `${filePath} 缺少 frontmatter 区块。请在文件开头写：\n` +
+        `---\ntitle: 标题\nsummary: 一句话摘要\ndate: ${new Date().toISOString().slice(0, 10)}\ntags:\n  - 标签\n---`,
+    );
+  }
+
+  return {
+    ...parseWithContext(postFrontmatterSchema, data, filePath),
+    slug,
+    readingMinutes: estimateReadingMinutes(source),
+  };
 }
 
 /**
