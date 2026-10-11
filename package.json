@@ -5,7 +5,7 @@
   "description": "个人网站项目根：Git 规范与提交钩子（业务工程在 site/）",
   "type": "module",
   "engines": {
-    "node": ">=22.12.0"
+    "node": ">=22.18.0"
   },
   "scripts": {
     "prepare": "husky",
@@ -13,7 +13,9 @@
     "build": "pnpm --dir site run build",
     "lint": "pnpm --dir site run lint",
     "typecheck": "pnpm --dir site run typecheck",
-    "format": "pnpm --dir site run format"
+    "format": "pnpm --dir site run format",
+    "extract": "pnpm --dir site run extract",
+    "validate": "pnpm --dir site run validate"
   },
   "devDependencies": {
     "@commitlint/cli": "19.8.1",
