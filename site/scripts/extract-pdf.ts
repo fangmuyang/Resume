@@ -21,8 +21,11 @@ import { createRequire } from 'node:module';
 import { profileSchema, resumeSchema, skillGroupsSchema } from '../src/lib/content/schema/index.ts';
 
 const here = dirname(fileURLToPath(import.meta.url));
-const repoRoot = join(here, '..', '..');
-const contentDir = join(repoRoot, 'content');
+/** 项目根目录（即 site/）。内容与源码都在它下面。 */
+const projectRoot = dirname(here);
+/** 仓库根目录，PDF 放在这里 */
+const repoRoot = dirname(projectRoot);
+const contentDir = join(projectRoot, 'content');
 const projectsDir = join(contentDir, 'projects');
 
 const PDF_PATH = join(repoRoot, 'MyResume.pdf');
@@ -271,8 +274,12 @@ function applyCorrections(text: string): string {
   return TEXT_CORRECTIONS.reduce((result, { from, to }) => result.split(from).join(to), text);
 }
 
+/**
+ * 写入内容文件。
+ * 路径相对**项目根**（site/），因为 content/ 就在项目根下。
+ */
 function writeJson(relativePath: string, value: unknown): string {
-  const fullPath = join(repoRoot, relativePath);
+  const fullPath = join(projectRoot, relativePath);
   mkdirSync(dirname(fullPath), { recursive: true });
   writeFileSync(fullPath, `${JSON.stringify(value, null, 2)}\n`, 'utf8');
   return fullPath;

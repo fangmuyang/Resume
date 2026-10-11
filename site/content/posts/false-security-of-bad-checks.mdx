@@ -1,0 +1,149 @@
+---
+title: 一个错误的检查比没有检查更糟
+summary: 我给项目写了三个自动化检查，其中"产物分块校验"自己错了三次。记录这个过程，以及为什么验证脚本的判据必须用真实数据核对过才能信。
+date: 2025-06-18
+updated: null
+tags:
+  - 工程化
+  - 测试
+  - 踩坑记录
+draft: false
+---
+
+这个项目里我写了几个自动化检查，用来替代"我会记得检查"这种承诺。
+其中一个是产物分块校验：确认每个路由都产出了独立的 chunk（说明代码分割生效了）。
+
+它错了三次。而每次失败，我都先怀疑被测代码，再去怀疑检查本身。
+
+## 第一版：写死数字
+
+```ts
+const lazyRoutes = jsFiles.filter((name) => /^(home|about|projects|...)-/.test(name));
+check('七个路由各自独立分块', lazyRoutes.length === 7);
+```
+
+**问题：加了新路由后，检查会失效。**
+
+我加了 `/projects/:slug` 详情页，路由变成 8 个，检查报错说"实际 8 个，期望 7 个"。
+但这次报错是**有价值的** —— 它提醒我更新。真正危险的是另一种情况：
+如果路由减少到 6 个，我可能只会把期望值改成 6，而不会想"是不是有路由没被分包"。
+
+写死的期望值会把"检查"退化成"记录当前状态"。
+
+改成从路由表推导：
+
+```ts
+const declaredLazyRoutes = [...routerSource.matchAll(/\blazy:\s*async/g)].length;
+check('每个路由都有独立分块', lazyRoutes.length === declaredLazyRoutes);
+```
+
+## 第二版：判据不成立
+
+从路由表推导后，检查又报错：`路由表声明 8 个，产物 10 个`。
+
+我以为是漏了什么，直到把产物文件列出来：
+
+```text
+about-BcxvV26Z.js
+page-placeholder-C9wNeoLg.js     ← 共享 chunk
+project-card-D6hmwa72.js         ← 共享 chunk
+project-detail-loader-C1BLw_2j.js ← loader chunk
+projects-7uUMK-rM.js
+...
+```
+
+**"带 hash 的文件名 = 路由分块"这个判据是错的。**
+共享组件和 loader 也会被拆成带 hash 的 chunk。
+
+于是我改用"只匹配已知的路由名"：
+
+```ts
+const ROUTE_CHUNK_PATTERN = /^[a-z][a-z0-9-]*-[A-Za-z0-9_-]{8}\.js$/;
+```
+
+写完之后我想验证一下这个正则。结果它**匹配了所有文件**。
+
+原因是 `[a-z0-9-]*` 是贪婪的 —— 它能一直吃到 hash 中间，
+然后 `[A-Za-z0-9_-]{8}` 再从剩下的字符里凑够 8 位。
+所谓"锚定 hash 长度"，在贪婪量词面前毫无意义。
+
+## 第三版：换了个地方犯同样的错
+
+这次我放弃用正则识别"这是不是路由 chunk"，改成从路由表解析出**模块名清单**，
+再核对每个模块恰好产出一个 chunk：
+
+```ts
+const routeModuleNames = [...routerSource.matchAll(/import\('@\/pages\/([a-z0-9-]+)'\)/g)].map(
+  (match) => match[1] ?? '',
+);
+```
+
+然后按文件名分组计数：
+
+```ts
+const match = /^(.+)-[A-Za-z0-9_-]+\.js$/.exec(name);
+```
+
+检查又失败了，说 `projects` 缺失。
+
+我打印了实际分组结果：
+
+```json
+[["projects-7uUMK", 1], ...]
+```
+
+**`projects-7uUMK-rM.js` 的模块名被切成了 `projects-7uUMK`。**
+
+`^(.+)-[A-Za-z0-9_-]+\.js$` 里的 `.+` 又是贪婪的，
+它吃到了最后一个 `-` 之前 —— 而 Vite 的 hash 里**本身含连字符**。
+
+## 第四版：先验证判据，再写检查
+
+最终版本分两步，且每一步都用真实数据核对过：
+
+```ts
+// 1) 从路由表拿到可信的模块名清单（来源明确，不含猜测）
+const routeModuleNames = [...routerSource.matchAll(/import\('@\/pages\/([a-z0-9-]+)'\)/g)].map(
+  (match) => match[1] ?? '',
+);
+
+// 2) 用非贪婪模式解析 chunk 名
+const match = /^(.+?)-[A-Za-z0-9_-]{8}\.js$/.exec(name);
+```
+
+关键是 `.+?` —— 非贪婪，遇到第一个能满足"后面跟着 8 位 hash"的位置就停下。
+
+不过说实话，更稳的做法是**不去解析文件名**，而是让构建产出机器可读的 manifest。
+对当前这个项目，`.+?` 配合真实数据验证已经够了。
+
+## 这一轮折腾的实际回报
+
+虽然检查本身错了三次，但它确实抓到了一个**真实问题**：
+
+产物里同时出现 `projects-D6xrOzUB.js` 和 `projects-Dgp3PNHs.js` ——
+同一个路由被拆成了两个 chunk。原因是详情页的 loader 用了动态导入：
+
+```ts
+loader: async ({ params }) => {
+  const { projectDetailLoader } = await import('@/features/projects/project-detail-loader');
+  return projectDetailLoader({ params });
+};
+```
+
+改成文件顶部静态导入后，重复分块消失，loader 也不再被推迟加载。
+
+**如果我没有写这个检查，这个问题会一直存在** —— 功能上完全正常，
+只是多了一次网络请求。这类问题只有自动化检查能发现。
+
+## 两条教训
+
+**一、检查的判据不是"看起来对"就行。**
+`/^[a-z][a-z0-9-]*-[A-Za-z0-9_-]{8}\.js$/` 看起来完全合理，
+但它匹配了所有文件。判据必须拿真实数据跑一遍，看它到底选出了什么。
+
+**二、一个错误或失效的检查，比没有检查更糟。**
+没有检查时，你知道自己在靠自觉，会保持警惕。
+有一个会误报的检查时，你会浪费时间去排查不存在的问题；
+有一个永远通过的检查时，你会以为它是安全的 —— 这就是虚假的安全感。
+
+所以我现在对守卫脚本的态度是：**判据要收紧到只报真问题，并且要定期用故意构造的错误验证它真的会失败。**

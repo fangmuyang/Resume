@@ -10,14 +10,9 @@ import tseslint from 'typescript-eslint';
 export default tseslint.config(
   // ---------- 0) 忽略产物与生成内容 ----------
   {
-    ignores: [
-      'dist',
-      'coverage',
-      'playwright-report',
-      'test-results',
-      'public',
-      'src/content/generated',
-    ],
+    // content/ 是数据与 MDX 正文，不是 JavaScript 源码，不参与 lint。
+    // posts-index.json 由脚本生成，也不应该被 lint。
+    ignores: ['dist', 'coverage', 'playwright-report', 'test-results', 'public', 'content'],
   },
 
   // ---------- 1) 所有文件：不依赖类型信息的推荐规则 ----------

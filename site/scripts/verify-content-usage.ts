@@ -27,12 +27,14 @@ import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const here = dirname(fileURLToPath(import.meta.url));
-const siteRoot = join(here, '..');
-const repoRoot = join(siteRoot, '..');
-const contentDir = join(repoRoot, 'content');
+/** 项目根目录（site/）：内容与源码都在它下面 */
+const projectRoot = dirname(here);
+/** 仓库根目录，用于把报告里的路径显示成相对形式 */
+const repoRoot = dirname(projectRoot);
+const contentDir = join(projectRoot, 'content');
 
 /** 需要扫描的源码目录 */
-const SOURCE_DIRS = [join(siteRoot, 'src', 'pages'), join(siteRoot, 'src', 'components')];
+const SOURCE_DIRS = [join(projectRoot, 'src', 'pages'), join(projectRoot, 'src', 'components')];
 
 /** 单词语技术名不算"事实"，不参与检查 */
 const MIN_LENGTH_SINGLE_WORD = 8;

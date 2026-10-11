@@ -11,20 +11,21 @@
 
 ## 技术栈
 
-| 层次 | 选型                             | 在本项目中的作用                          |
-| ---- | -------------------------------- | ----------------------------------------- |
-| 核心 | React 19 · TypeScript 5.9        | 组件与类型系统                            |
-| 构建 | Vite 7                           | 开发服务器、生产构建与 vendor 分包        |
-| 路由 | React Router 7（数据路由）       | 七个路由、懒加载、路由级错误边界          |
-| 状态 | Zustand 5                        | 主题状态（暗黑模式）                      |
-| 动画 | Motion（Framer Motion）          | 路由切换过渡，尊重 prefers-reduced-motion |
-| 样式 | Tailwind CSS v4 · cva · clsx     | 设计令牌、变体与类名合并                  |
-| 图标 | lucide-react                     | 图标（按需 tree-shaking）                 |
-| 内容 | Zod 4（仅构建期）· pdfjs-dist    | 内容校验与 PDF 提取，均不进入浏览器产物   |
-| 质量 | ESLint 9 · Prettier 3            | 静态检查与格式化                          |
-| 提交 | Husky · lint-staged · commitlint | 本地提交卡口 + 提交信息规范               |
+| 层次 | 选型                             | 在本项目中的作用                              |
+| ---- | -------------------------------- | --------------------------------------------- |
+| 核心 | React 19 · TypeScript 5.9        | 组件与类型系统                                |
+| 构建 | Vite 7                           | 开发服务器、生产构建与 vendor 分包            |
+| 路由 | React Router 7（数据路由）       | 九个路由、懒加载、路由级错误边界、loader 预取 |
+| 状态 | Zustand 5                        | 主题状态（暗黑模式）                          |
+| 动画 | Motion（Framer Motion）          | 路由切换过渡，尊重 prefers-reduced-motion     |
+| 样式 | Tailwind CSS v4 · cva · clsx     | 设计令牌、变体与类名合并                      |
+| 图标 | lucide-react                     | 图标（按需 tree-shaking）                     |
+| 内容 | Zod 4（仅构建期）· pdfjs-dist    | 内容校验与 PDF 提取，均不进入浏览器产物       |
+| 文章 | MDX 3 · rehype-pretty-code       | Markdown 里嵌入 React 组件，双主题代码高亮    |
+| 质量 | ESLint 9 · Prettier 3            | 静态检查与格式化                              |
+| 提交 | Husky · lint-staged · commitlint | 本地提交卡口 + 提交信息规范                   |
 
-后续阶段会依次加入 TanStack Query、MDX、Fuse.js、React Hook Form、MSW、
+后续阶段会依次加入 TanStack Query、Fuse.js、React Hook Form、MSW、
 Vitest、Playwright、PWA 与 GitHub Actions，详见路线图。
 
 ## 目录结构
@@ -32,40 +33,49 @@ Vitest、Playwright、PWA 与 GitHub Actions，详见路线图。
 ```
 .
 ├── MyResume.pdf          # 内容来源（唯一真相来源）
-├── content/              # 内容与代码分离：由 PDF 提取出的站点内容
-│   ├── profile.json      # 个人信息、联系方式、隐私开关
-│   ├── resume.json       # 教育经历、项目概览、奖项
-│   ├── skills.json       # 技能分组
-│   ├── projects/*.json   # 作品集详情（文件名即 slug）
-│   └── raw/              # PDF 原始文本行，便于核对与 diff
 ├── docs/
 │   └── ROADMAP.md        # 阶段路线图与技术决策记录
 ├── site/                 # 业务工程（React + TS + Vite）
+│   ├── content/          # 内容与代码分离：站点内容（在项目内，见下方说明）
+│   │   ├── profile.json      # 个人信息、联系方式、隐私开关
+│   │   ├── resume.json       # 教育经历、项目概览、奖项
+│   │   ├── skills.json       # 技能分组
+│   │   ├── projects/*.json   # 作品集详情（文件名即 slug）
+│   │   ├── posts/*.mdx       # 文章正文（MDX）
+│   │   ├── posts-index.json  # 构建期生成的文章元数据索引
+│   │   └── raw/              # PDF 原始文本行，便于核对与 diff
 │   ├── scripts/
-│   │   ├── extract-pdf.ts      # PDF → content/ 的可复现管道
-│   │   ├── validate-content.ts # 内容校验 CLI
-│   │   └── verify-build.ts     # 产物验证（base 前缀、basename、分块、防 FOUC）
+│   │   ├── extract-pdf.ts        # PDF → content/ 的可复现管道
+│   │   ├── build-posts-index.ts  # 扫描 MDX frontmatter 生成文章索引
+│   │   ├── validate-content.ts   # 内容校验 CLI
+│   │   ├── verify-content-usage.ts # 零硬编码检查
+│   │   └── verify-build.ts       # 产物验证（base 前缀、basename、分块、防 FOUC）
 │   ├── src/
 │   │   ├── app/          # 站点外壳：路由表、根布局、错误边界、页面过渡
 │   │   ├── pages/        # 按路由切分的页面组件（懒加载）
-│   │   ├── features/     # 垂直切片，如 theme（含 store 与切换按钮）
+│   │   ├── features/     # 垂直切片：theme / projects / posts
 │   │   ├── components/
 │   │   │   ├── ui/       # 设计系统基座：Button / Card / Badge / Container / Slot
-│   │   │   └── layout/   # Header / Footer / 移动端抽屉
+│   │   │   ├── layout/   # Header / Footer / 移动端抽屉
+│   │   │   └── motion/   # 滚动入场动画
 │   │   ├── lib/
 │   │   │   ├── content/  # Zod schema、校验逻辑、类型安全加载器
-│   │   │   ├── motion.ts # 动画参数集中管理
-│   │   │   ├── navigation.ts   # 导航结构（桌面与移动端共用）
-│   │   │   └── utils.ts  # cn()：clsx + tailwind-merge
+│   │   │   ├── projects.ts / format.ts / motion.ts / navigation.ts / utils.ts
+│   │   │   └── rehype-shiki-data-attributes.ts  # 修 MDX 与 shiki 的兼容问题
 │   │   ├── main.tsx      # 应用入口
-│   │   └── styles/index.css    # Tailwind v4 入口 + 设计令牌
+│   │   └── styles/index.css    # Tailwind v4 入口 + 设计令牌 + 代码高亮主题
 │   ├── eslint.config.js  # ESLint 9 扁平配置
 │   ├── tsconfig.json     # 严格模式全开
-│   └── vite.config.ts    # 内容校验插件 content-guard + vendor 分包
+│   └── vite.config.ts    # 内容校验插件 + MDX 配置 + vendor 分包
 ├── .husky/               # Git 提交钩子
 ├── lint-staged.config.js
 └── commitlint.config.js
 ```
+
+> **为什么 `content/` 在 `site/` 里，而不是仓库根？**
+> pnpm 的严格隔离意味着 `react` 只能从 `site/node_modules` 解析到。
+> MDX 会编译成 import `react/jsx-runtime` 的代码，
+> 放在包根之外的 `.mdx` 文件会因解析不到该模块而构建失败。
 
 ## 快速开始
 
@@ -84,6 +94,8 @@ pnpm build           # 内容校验 + 类型检查 + 生产构建 + 产物验证
 pnpm check           # 内容校验 + 零硬编码检查 + 类型检查 + ESLint + 格式检查（CI 用）
 pnpm validate        # 只校验 content/ 内容是否合法
 pnpm extract         # 重新从 MyResume.pdf 生成 content/
+pnpm build:posts-index  # 重新扫描 MDX frontmatter 生成文章索引
+pnpm build:content   # extract + build:posts-index
 pnpm verify:content  # 检查页面是否有硬编码文案（应全部来自 content/）
 pnpm verify:build    # 检查产物：base 前缀、basename、分块、防 FOUC 脚本
 pnpm typecheck       # 仅类型检查
@@ -110,13 +122,16 @@ pnpm format          # Prettier 写入格式化
 
 ## 内容工作流
 
-站点内容全部来自 `content/`，与组件代码解耦。更新内容的两种方式：
+站点内容全部来自 `site/content/`，与组件代码解耦。更新内容的三种方式：
 
 1. **改简历 PDF** → 运行 `pnpm extract` 重新生成 JSON（人工修正规则写在 `extract-pdf.ts` 里，可复现）；
-2. **只补文字内容**（如个人简介、项目详情）→ 直接编辑 `content/` 下的 JSON。
+2. **只补文字内容**（如个人简介、项目详情）→ 直接编辑 `content/` 下的 JSON；
+3. **写文章** → 在 `content/posts/` 下新增 `.mdx` 文件，然后运行 `pnpm build:posts-index`
+   更新元数据索引（正文里可以直接使用 `<Callout>` 与 `<TerminalSession>` 组件）。
 
-两种方式之后都建议跑一次 `pnpm validate`。内容里的 `TODO:` 是待补占位，上线前应清空；
+三种方式之后都建议跑一次 `pnpm validate`。内容里的 `TODO:` 是待补占位，上线前应清空；
 页面上会把它渲染成醒目的「待补充」提示块，而不是生硬的 `TODO:…` 文本。
+文章 frontmatter 里的 `draft: true` 可以让文章暂时不出现在列表里，不必删除文件。
 
 ### 「零硬编码」是可执行的检查
 

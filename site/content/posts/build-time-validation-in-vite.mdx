@@ -1,0 +1,117 @@
+---
+title: 构建期校验为什么"没有生效"：一次被 Vite 骗过的经历
+summary: 我把 Zod 校验写进了内容加载器，用坏数据测试时构建却依然通过。查下去才发现，Vite 只做静态打包，模块顶层的 throw 永远不会在 Node 里执行。
+date: 2025-06-10
+updated: null
+tags:
+  - Vite
+  - 构建原理
+  - 踩坑记录
+draft: false
+---
+
+这个项目的内容来自一份 PDF，我写了一条管道把 PDF 转成 JSON，再用 Zod 校验。
+当时我很满意这个设计：**生成与校验共用一套 schema**，不可能出现"改了类型忘了改校验"。
+
+然后我用坏数据测了一次。
+
+## 我期待的结果
+
+我在 `content/profile.json` 里删掉必填的 `headline`、把邮箱改成了 `not-a-valid-url`，
+然后运行构建。按设计，`profileSchema.parse()` 应该抛错，构建应该失败。
+
+实际结果：
+
+<TerminalSession command="pnpm build" output="✓ built in 891ms" />
+
+**构建通过了。** 坏数据一路内联进了产物，上线后只会是一个白屏。
+
+## 排查：先怀疑自己，再怀疑工具
+
+第一个怀疑对象是 Vite 的构建缓存 —— 我删掉 `node_modules/.vite` 重试，还是通过。
+
+第二个怀疑对象是 "校验函数是不是根本没被调用"。我给加载器加了 `console.log`，
+**构建输出里什么都没有**。
+
+这一步很关键。日志没出现，说明要么模块没执行，要么日志被吞了。
+于是我做了个决定性实验：新建一个模块，顶层直接写
+
+```ts
+throw new Error('EXPERIMENT: top-level throw from a module during bundling');
+```
+
+在 `App.tsx` 里 import 它，然后构建。
+
+**构建依然成功，退出码 0。**
+
+<Callout tone="warn" title="这一步很关键">
+  这个实验花了我三分钟，但它把问题从"猜测"变成了"确定"： 既然连显式的 `throw`
+  都不影响构建，那问题一定出在**执行时机**上， 而不是我的 Zod 代码写错了。
+</Callout>
+
+## 原因
+
+结论清楚了：**Vite（以及它底层的 Rollup）在构建时只是把模块静态地打包在一起，
+并不会在 Node 里执行模块体。**
+
+那些 `throw` 语句被原样搬进了产物，要等到**浏览器运行时**才可能触发。
+而在浏览器里，`createRoot().render()` 之前的模块求值确实会执行 ——
+所以坏数据不会让构建失败，只会让线上的页面白屏。
+
+我原本以为的"构建期校验"，实际上是**运行时校验**，而且是在用户浏览器里的运行时。
+
+## 正确的做法：把校验放进 Vite 钩子
+
+Vite 插件提供了一系列钩子，它们在 Node 侧真实执行，抛错会中断构建：
+
+```ts
+function contentGuard(): Plugin {
+  return {
+    name: 'content-guard',
+    async buildStart() {
+      const { validateAllContent } = await import('./src/lib/content/validate.ts');
+      try {
+        validateAllContent(readJson, projectPaths);
+        this.info('内容校验通过');
+      } catch (error) {
+        this.error((error as Error).message); // 中断构建
+      }
+    },
+  };
+}
+```
+
+现在同样的坏数据会得到：
+
+<TerminalSession
+  command="pnpm build"
+  tone="error"
+  output="[content-guard] 内容校验失败：content/profile.json
+  - headline: Invalid input: expected string, received undefined
+  - links.1.value: Invalid URL
+✗ Build failed in 13ms"
+/>
+
+## 顺带发现的两件事
+
+**一、Node 能直接 import `.ts`。**
+插件里要复用 Zod schema，而 schema 是 TypeScript 写的。
+我原以为需要 tsx 之类的工具，实际上 Node 22.18+/24 原生支持类型剥离，
+`await import('./src/lib/content/validate.ts')` 直接就能用。
+
+**二、校验不该进浏览器产物。**
+修好构建期校验后，我顺手看了一眼产物体积：gzip 从 70 KB 涨到了 101 KB。
+原因是我同时在加载器里保留了运行时校验，把 Zod 和全部 schema 打进了浏览器。
+
+但运行时校验在这里毫无价值 —— 构建期已经拦住了坏数据。
+把 Zod 改成 `devDependency` 后，产物回落到 75 KB。
+
+## 两条通用教训
+
+1. **"我以为的时机"和"实际的时机"经常不一样。**
+   判断一段代码什么时候执行，不能靠直觉，要靠实验 ——
+   我当时那个"顶层 throw"的实验花了三分钟，省下了几个小时的猜测。
+
+2. **校验应当发生在能阻止问题扩散的最早位置。**
+   对静态站点而言，最早的位置是构建期的 Node 进程，而不是用户的浏览器。
+   放错位置的校验既没有保护作用，还要付出体积代价。

@@ -2,11 +2,56 @@
 
 > 个人网站学习项目 · React 19 + TypeScript + Vite
 > 内容来源：`MyResume.pdf`（1 页中文简历，Chromium/Skia 打印导出）
-> 状态：**阶段 0–4 已完成并验证**，等待补充素材后进入阶段 5
+> 状态：**阶段 0–5 已完成并验证**，等待补充素材后进入阶段 6
 
 ---
 
 ## 0. 阶段完成记录
+
+### 阶段 5 · MDX 文章与笔记（已完成）
+
+| 项目     | 结果                                                                             |
+| -------- | -------------------------------------------------------------------------------- |
+| 正文     | `@mdx-js/rollup` 编译 `content/posts/*.mdx`，每篇独立分块（12/25/29 KB）         |
+| 元数据   | 构建期扫描 frontmatter → Zod 校验 → 生成 `content/posts-index.json`              |
+| 高亮     | rehype-pretty-code + shiki 双主题（github-light / github-dark），跟随 .dark 切换 |
+| 写作能力 | 正文可直接用 `<Callout>` 与 `<TerminalSession>`，无需 import                     |
+| 页面     | `/posts` 列表（含阅读时长）+ `/posts/:slug` 详情（前后篇导航）                   |
+| 内容     | 3 篇基于本项目真实踩坑的示范文章                                                 |
+| 验证结果 | validate ✓ verify:content ✓ typecheck ✓ lint ✓ format ✓ build ✓ verify:build ✓   |
+
+**阶段 5 解决的问题与踩坑记录**
+
+1. **MDX 无法编译任何内联 `style` 属性。** 本阶段最大的坑，两种写法都会中断构建：
+   - shiki 的 CSS 变量：`style="--shiki-light:#D73A49;--shiki-dark:#F97583"`
+     （`hast-util-to-estree` 不支持 `--` 开头的属性名）；
+   - 普通 CSS 值：`style="display: grid;"`（解析器期望 JS 对象字面量语法，不是 CSS 声明）。
+     报错分别是 `Could not parse 'style' attribute on 'span'` 与 `... on 'code'`。
+     解法是写一个 rehype 插件，把 `--shiki-*` 搬到 `data-*-color` 属性、其余 style 直接删除，
+     表现性样式改在 CSS 里补。位置必须排在 rehype-pretty-code **之后**（rehype 按数组顺序执行）。
+     另外，rehype-pretty-code 自带的 `onVisitLine` 等钩子**覆盖不到 token 级 span**，
+     所以必须用独立插件递归处理整棵树。
+2. **`content/` 必须放在 Vite 项目内。** pnpm 的严格隔离意味着 `react` 只能从
+   `site/node_modules` 解析。MDX 会编译成 `import 'react/jsx-runtime'` 的代码，
+   而 `.mdx` 文件原本在仓库根的 `content/` —— 模块解析向上查找时越过了
+   `site/node_modules`，构建报 `Rollup failed to resolve import "react/jsx-runtime"`。
+   用 `git mv` 把 `content/` 移进 `site/` 后解决（保留了文件历史）。
+   这是**只有实际构建才会暴露**的问题：类型检查与 lint 全都通过。
+3. **浏览器侧拿不到文章原始文本。** MDX 编译后只剩组件，而列表页需要标题/日期/标签/阅读时长。
+   两条路都走不通：运行时校验 frontmatter 会把 Zod 打进产物；
+   用 `?raw` 再读一次源文件，MDX 插件会把那段原始文本也当代码编译，
+   文章里代码示例的 `import` 语句会被 Rollup 当成真实导入而报错。
+   最终方案：构建期算好元数据、落盘 `posts-index.json`，浏览器只读 JSON ——
+   与项目既有的「内容预生成」思路一致。
+4. **`useLoaderData` 处理含 React 元素的数据时会推断失败。** 实测依次得到
+   `never`、以及缺少 `children` 的 ReactElement。loader 自身的返回类型是正确的，
+   退化发生在 hook 的类型变换里。最终在页面侧显式标注
+   `useLoaderData() as PostDetailData`，并把 loader 返回值设计成
+   「已创建的 React 元素」而不是组件类型。
+5. **阅读时长要用正文算，不能用摘要。** 摘要写在 frontmatter 里，与正文长度没有稳定关系，
+   拿它估算会明显失真。改成在构建期解析正文、扣掉代码块后按中英文字数估算。
+6. **`no-unsafe-assignment` 抓到了 `[...unknown, value]`。** 直接展开 unknown
+   会让元素类型变成 `any`，显式收窄成 `unknown[]` 才通过。
 
 ### 阶段 4 · 作品集 + 标签筛选 + 详情页（已完成）
 
@@ -255,7 +300,7 @@ Zustand(theme/search/tag) ──────────────▶  React R
 | **2**  | 路由 + 布局 + 暗黑模式 + 响应式 | React Router、shadcn/ui、Zustand、Framer Motion                           | 6 个路由可达；暗色刷新后保持；移动端无横向滚动                        | ✅ 完成 |
 | **3**  | 首页 + 关于我                   | 组件设计、设计令牌、动画                                                  | 内容全部来自 `content/`，零硬编码文案                                 | ✅ 完成 |
 | **4**  | 项目/作品集 + 标签筛选          | 动态路由、筛选状态、卡片动效                                              | 筛选可用；详情页可直接刷新打开                                        | ✅ 完成 |
-| **5**  | 文章/笔记（MDX）                | MDX、代码高亮、构建期内容收集                                             | MDX 内可嵌入 React 组件并正常渲染                                     | ⬜      |
+| **5**  | 文章/笔记（MDX）                | MDX、代码高亮、构建期内容收集                                             | MDX 内可嵌入 React 组件并正常渲染                                     | ✅ 完成 |
 | **6**  | 简历页 + PDF 预览/下载          | pdfjs-dist 前端预览、文件下载                                             | PDF 可预览可下载；**手机号不在网页正文出现**                          | ⬜      |
 | **7**  | 搜索 + 联系表单                 | Fuse.js、React Hook Form + Zod                                            | 搜索命中项目/文章/技能；表单非法输入有提示                            | ⬜      |
 | **8**  | GitHub API + Query + MSW        | TanStack Query、MSW                                                       | 动态仓库列表有 loading/error 态；测试中网络被 mock                    | ⬜      |

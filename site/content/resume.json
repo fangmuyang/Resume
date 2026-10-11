@@ -33,12 +33,7 @@
         "start": "2024-02-01",
         "end": "2024-05-01"
       },
-      "tech": [
-        "Uni-app",
-        "uniCloud",
-        "Vue",
-        "HTML"
-      ],
+      "tech": ["Uni-app", "uniCloud", "Vue", "HTML"],
       "bullets": [
         "基于 Uni-app 与 uniCloud 开发，结合 Vue、HTML 及云后端技术，为用户提供流畅的使用体验。",
         "主导实现完整的前端应用方案，覆盖用户注册、登录、活动浏览与参与等功能。"
@@ -53,12 +48,7 @@
         "start": "2024-06-01",
         "end": "2024-12-01"
       },
-      "tech": [
-        "Uni-app",
-        "通义千问 API",
-        "Python SDK",
-        "HTML"
-      ],
+      "tech": ["Uni-app", "通义千问 API", "Python SDK", "HTML"],
       "bullets": [
         "基于 Uni-app 框架，结合通义千问的语言处理能力实现人机对话。",
         "借助通义千问 API 理解用户意图并生成恰当回复，界面使用 HTML 构建。",
@@ -74,12 +64,7 @@
         "start": "2025-01-01",
         "end": "2025-04-01"
       },
-      "tech": [
-        "Vue",
-        "Element UI",
-        "Ollama",
-        "DeepSeek"
-      ],
+      "tech": ["Vue", "Element UI", "Ollama", "DeepSeek"],
       "bullets": [
         "基于 Vue 与 Element UI 构建项目，提供实时监控数据及可视化分析工具。",
         "在本地通过 Ollama 部署 DeepSeek，实现 AI 对话功能。",
@@ -95,10 +80,7 @@
         "start": "2025-02-01",
         "end": null
       },
-      "tech": [
-        "阿里云",
-        "宝塔面板"
-      ],
+      "tech": ["阿里云", "宝塔面板"],
       "bullets": [
         "基于阿里云平台，利用宝塔后台管理系统完成部署并正式上线。",
         "线上地址为 http://www.fangmu.online/ ，项目仍在持续推进中。"
@@ -106,8 +88,5 @@
       "url": "http://www.fangmu.online/"
     }
   ],
-  "awards": [
-    "国家奖学金",
-    "校三等奖学金"
-  ]
+  "awards": ["国家奖学金", "校三等奖学金"]
 }

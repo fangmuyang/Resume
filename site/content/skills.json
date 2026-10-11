@@ -2,55 +2,26 @@
   {
     "id": "frontend",
     "label": "前端开发",
-    "items": [
-      "Vue.js",
-      "Vue Router",
-      "React",
-      "TypeScript",
-      "HTML / CSS",
-      "Uni-app"
-    ]
+    "items": ["Vue.js", "Vue Router", "React", "TypeScript", "HTML / CSS", "Uni-app"]
   },
   {
     "id": "backend-data",
     "label": "后端与数据",
-    "items": [
-      "Python",
-      "Java",
-      "Node.js",
-      "MySQL",
-      "SQL Server"
-    ]
+    "items": ["Python", "Java", "Node.js", "MySQL", "SQL Server"]
   },
   {
     "id": "ai",
     "label": "AI 应用",
-    "items": [
-      "通义千问 API",
-      "Ollama 本地部署",
-      "DeepSeek",
-      "Prompt 基础"
-    ]
+    "items": ["通义千问 API", "Ollama 本地部署", "DeepSeek", "Prompt 基础"]
   },
   {
     "id": "engineering",
     "label": "工程素养",
-    "items": [
-      "操作系统",
-      "数据结构与算法",
-      "计算机网络",
-      "系统运维",
-      "Git",
-      "Docker"
-    ]
+    "items": ["操作系统", "数据结构与算法", "计算机网络", "系统运维", "Git", "Docker"]
   },
   {
     "id": "office",
     "label": "办公效率",
-    "items": [
-      "Microsoft Word",
-      "Excel",
-      "PowerPoint"
-    ]
+    "items": ["Microsoft Word", "Excel", "PowerPoint"]
   }
 ]

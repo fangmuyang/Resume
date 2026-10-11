@@ -1,0 +1,175 @@
+---
+title: 用 pdfjs 从一份"抽不出文字"的 PDF 里还原版式
+summary: 简历 PDF 是 Chromium 打印导出的，字体是 Type3 矢量字形，普通解析器只能得到乱码。用 pdfjs 的文本层按坐标聚类，才把版式还原出来。
+date: 2025-06-14
+updated: null
+tags:
+  - PDF
+  - 数据处理
+  - 踩坑记录
+draft: false
+---
+
+我想把简历 PDF 变成网站内容，第一反应是"写个脚本抽文本"。
+
+结果第一步就卡住了。
+
+## 乱码
+
+我用 Node 的 `zlib` 手动解压 PDF 里的流，然后把文本操作符抠出来。
+得到的第一个页面预览是这样的：
+
+```
+ç=55/&71';4*<5,;5+934/'51?U,AX.DY/D^1Je4Mg6Nf6Oi7Nk6Mg:M`9IV9HW=IZ=J_>Ka=La<M`:L_<I]=HX=FT;ES@HX@K[?K]=J^<Ng:Qp8Vu5W}0U.Qz-M0S|-R0+.*4.Q$P,%
+```
+
+不是乱码那么简单 —— 这是**字形数据本身**。
+
+后来我查了这个 PDF 的元信息：
+
+```bash
+Producer: Skia/PDF m131
+Creator:  Chromium
+FontFile: 0
+```
+
+`FontFile: 0` 是关键：**它没有嵌入字体文件**。
+Chromium 打印成 PDF 时，把每个字形转换成了 Type3 字体（一系列绘制指令），
+所以文件里根本没有"文字"，只有"怎么画出这些字"。
+
+`Producer` 和 `Creator` 则说明了它的来路 —— 是浏览器打印出来的，
+多半是从某个在线简历工具导出的。
+
+<Callout tone="note" title="这次的教训">
+  我在写解析器之前没有先看 PDF 的元信息。如果早点执行 `Producer` / `FontFile` 这几项，
+  就能立刻判断出"手写解析器行不通"，省下大半天。 **先看元信息，再动手写代码。**
+</Callout>
+
+## 正确的工具：pdfjs 的文本层
+
+手写流解析器在这类 PDF 上注定失败。换用 pdfjs-dist：
+
+```ts
+const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
+
+const doc = await pdfjs.getDocument({ data: new Uint8Array(readFileSync(path)) }).promise;
+const page = await doc.getPage(1);
+const content = await page.getTextContent();
+```
+
+`getTextContent()` 返回的是**文本项**数组，每一项带着自己的变换矩阵。
+刚才那堆字形数据，到这里变成了可读的文字。
+
+但直接拼起来是一大坨 —— 因为 PDF 不存储"行"的概念，
+它只记录"在坐标 (x, y) 画这几个字"。
+
+## 按坐标还原版式
+
+所以下一步是自己把文本项聚成视觉行。关键是变换矩阵的第 5 个分量是 y 坐标：
+
+```ts
+const y = Math.round(item.transform[5]);
+const fontSize = Math.hypot(item.transform[0], item.transform[1]);
+```
+
+先把 y 相近（差 3 以内）的项归到同一行，再按 x 排序拼接。
+做完这一步，我终于看到了人眼熟悉的版式：
+
+```
+[y= 711 x= 30 sz=12.2] 教育经历
+[y= 675 x= 30 sz=10.8] 浙江经贸职业技术学院 计算机科学与技术 · 计算机应用 2023/9/1 - 2026/6/1
+[y= 654 x= 43 sz=10.8] 主修课程包括 Web 前端开发、Python 程序设计、后期制作、数据库应用技术、系统运维、微信小程序开
+[y= 636 x= 43 sz=10.8] 发、移动混合开发以及 Java 程序设计。
+```
+
+**坐标突然变成了有用的信息。** 从这张表里能直接读出文档的版式规则：
+
+| 内容     | x   | 字号 |
+| -------- | --- | ---- |
+| 区块标题 | 30  | 12.2 |
+| 条目标题 | 30  | 10.8 |
+| 正文     | 43  | 10.8 |
+
+有了这张表，"这是标题还是正文"就不用猜了。
+
+## 合并被排版截断的行
+
+PDF 里的换行是**排版结果**，不是语义分段。
+上面那个"主修课程…"就被截断成了两行，需要拼回去。
+
+我在这里走了两次弯路。第一次用"缩进更深即续行"判断 —— 失败，
+因为正文各行的 x 完全相同（都是 43），缩进区分不了续行和新条目。
+
+第二次改用"行是否足够长"—— 也失败，中文长句被截断后依然很长。
+
+第三次才想到：**中文排版里，一句话没写完才会换行。**
+所以判据应该是标点：
+
+```ts
+function endsSentence(text: string): boolean {
+  return /[。！？；;：:）)】」』”"．.]$/.test(text);
+}
+```
+
+"上一行不以句末标点结尾"才是续行的可靠信号。
+
+## 一个必须显式处理的细节：脏字符
+
+修好版式还原后，输出里还有这种东西：
+
+```
+基于 Uni \u0000 app 与 Uni cloud 开发
+```
+
+`\u0000` 是字体缺字形时留下的控制字符。
+直接渲染会在页面上出现方块，而且很容易被当成正常空格忽略过去。
+
+```ts
+const CONTROL_AND_ZERO_WIDTH = new RegExp(
+  `[${String.fromCharCode(0)}-${String.fromCharCode(0x1f)}...]`,
+  'g',
+);
+
+function sanitize(text: string): string {
+  return text
+    .replace(CONTROL_AND_ZERO_WIDTH, ' ')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+}
+```
+
+（顺带一提：正则字面量里直接写控制字符会触发 ESLint 的 `no-control-regex`，
+所以才用 `RegExp` 构造。）
+
+## 还有拼写错误，而且构建不会报错
+
+清理完控制字符，我注意到一个更隐蔽的问题：
+
+```
+Fangmu. onlien个人网页
+```
+
+**`onlien` 是 `online` 的拼写错误** —— 而且它在原始 PDF 里就是错的。
+
+这让我意识到一件事：**这类错误不会让构建失败，只会安静地上线。**
+所以我给脚本加了一个噪音检测器：
+
+```ts
+if (/[a-z]\.[ ]+[a-z]/.test(line.text)) {
+  anomalies.push(`疑似英文拼写/空格异常：${line.text}`);
+}
+```
+
+它第一次运行就抓到了这处拼写错误，还有一处标点前的多余空格。
+人工修正写成脚本里的规则，而不是直接改生成的 JSON ——
+**因为 JSON 是产物，重跑就会覆盖，修正必须可复现。**
+
+## 小结
+
+处理"真实世界的文档"时，值得记住三件事：
+
+1. **先看元信息再动手。** `FontFile: 0` 这一个字段就能省掉几小时的手写解析器。
+2. **坐标不是噪音，是信息。** PDF 丢失了行与段落，但留下了位置；
+   位置足够重建版式，前提是你先去观察它而不是凭直觉写规则。
+3. **修正规则要落在代码里。** 手工改产物是不可持续的 ——
+   下次重跑，你的修正就没了。

@@ -16,8 +16,9 @@ import { fileURLToPath } from 'node:url';
 import { CONTENT_FILES, PROJECTS_DIR, validateAllContent } from '../src/lib/content/validate.ts';
 
 const here = dirname(fileURLToPath(import.meta.url));
-const repoRoot = join(here, '..', '..');
-const contentRoot = join(repoRoot, 'content');
+/** 项目根目录（site/）：内容与源码都在它下面 */
+const projectRoot = dirname(here);
+const contentRoot = join(projectRoot, 'content');
 
 function readJson(relativePath: string): unknown {
   const raw = readFileSync(join(contentRoot, relativePath), 'utf8');
