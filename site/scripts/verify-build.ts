@@ -42,15 +42,67 @@ check(
 );
 
 const jsFiles = readdirSync(assetsDir).filter((name) => name.endsWith('.js'));
-const lazyRoutes = jsFiles.filter((name) =>
-  /^(home|about|projects|posts|resume|contact|not-found)-/.test(name),
+
+/**
+ * 从路由表解析出每个懒加载路由对应的模块名，再核对产物里是否**各自恰好**有一个 chunk。
+ *
+ * 这里踩了两次坑，都记下来：
+ *
+ * 1. 第一版写死「七个路由」。加了 /projects/:slug 后检查就失效了 ——
+ *    失效的检查比没有检查更糟，它给出虚假的安全感。改成从路由表推导。
+ * 2. 第二版用「带 hash 的文件名 = 路由 chunk」来数。这个判据不成立：
+ *    共享 chunk（page-placeholder、project-card）和 loader chunk 也都带 hash。
+ *    而且我还写错过正则（`[a-z0-9-]*` 是贪婪的，能吞掉 hash 的一部分，
+ *    结果匹配了所有文件）—— 正则判据必须用真实文件名逐个验证过才能信。
+ *
+ * 现在改成精确判定：路由表里 import('@/pages/xxx') 说明该路由会产出
+ * 名为 `xxx-<hash>.js` 的 chunk，逐个检查存在且唯一。
+ */
+const routerSource = readFileSync(
+  join(import.meta.dirname, '..', 'src', 'app', 'router.tsx'),
+  'utf8',
 );
 
-check('七个路由各自独立分块', lazyRoutes.length === 7, `实际 ${lazyRoutes.length} 个`);
+const routeModuleNames = [...routerSource.matchAll(/import\('@\/pages\/([a-z0-9-]+)'\)/g)].map(
+  (match) => match[1] ?? '',
+);
+
+const chunkCountByName = new Map<string, number>();
+for (const name of jsFiles) {
+  /**
+   * Vite 的 chunk 命名是 `<模块名>-<hash>.js`。
+   * hash 本身可能含连字符（如 `projects-7uUMK-rM.js`），所以不能用贪婪的
+   * `^(.+)-[A-Za-z0-9_-]+\.js$` —— 那样会把模块名切成 `projects-7uUMK`。
+   *
+   * 可靠做法是从右往左锚定 hash 的形状：Vite 默认 base64url 字符集的 8 位 hash。
+   */
+  const match = /^(.+)-[A-Za-z0-9_-]{8}\.js$/.exec(name);
+  const moduleName = match?.[1];
+  if (moduleName !== undefined) {
+    chunkCountByName.set(moduleName, (chunkCountByName.get(moduleName) ?? 0) + 1);
+  }
+}
+
+const missing = routeModuleNames.filter((name) => !chunkCountByName.has(name));
+const duplicated = routeModuleNames.filter((name) => (chunkCountByName.get(name) ?? 0) > 1);
+
+check(
+  '每个路由各自一个分块',
+  routeModuleNames.length > 0 && missing.length === 0 && duplicated.length === 0,
+  routeModuleNames.length === 0
+    ? '未能从路由表解析出懒加载模块'
+    : `解析到 ${routeModuleNames.length} 个路由模块` +
+        (missing.length > 0 ? `，缺失：${missing.join(', ')}` : '') +
+        (duplicated.length > 0 ? `，重复分块：${duplicated.join(', ')}` : ''),
+);
 
 // 懒加载 chunk 里的相对导入必须指回 /resume/assets/
 // 注意 (match[1] ?? '')：开启 noUncheckedIndexedAccess 后，捕获组类型是 string | undefined
-const dynamicImports = lazyRoutes.flatMap((name) => {
+const routeChunkFiles = jsFiles.filter((name) =>
+  routeModuleNames.some((moduleName) => name.startsWith(`${moduleName}-`)),
+);
+
+const dynamicImports = routeChunkFiles.flatMap((name) => {
   const source = readFileSync(join(assetsDir, name), 'utf8');
   return [...source.matchAll(/import\("\.\/([^"]+)"\)/g)].map((match) => match[1] ?? '');
 });
