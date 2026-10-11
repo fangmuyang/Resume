@@ -43,6 +43,12 @@ export const profileSchema = z.object({
   availability: z.string().min(1).nullable().default(null),
   /** 头像路径（相对 public/） */
   avatar: z.string().min(1).nullable().default(null),
+  /**
+   * 页脚的「本站由 … 构建」说明。
+   * 放进内容而不是写死在组件里：这类文字会随技术栈升级而过期，
+   * 更适合当作可维护的数据。
+   */
+  builtWith: z.string().min(1).default('React + TypeScript'),
   links: z.array(socialLinkSchema).default([]),
   privacy: privacySchema.default({ showPhone: false, allowResumeDownload: true }),
 });

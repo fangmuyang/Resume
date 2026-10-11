@@ -371,6 +371,7 @@ async function main(): Promise<void> {
     location: TODO('所在城市，例如 杭州'),
     availability: '寻找前端开发方向实习机会',
     avatar: null,
+    builtWith: 'React 19 + TypeScript + Vite',
     links: [
       {
         kind: 'email',

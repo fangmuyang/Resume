@@ -10,7 +10,7 @@ export function Footer() {
     <footer className="mt-16 border-t border-slate-200 py-8 dark:border-slate-800">
       <div className="mx-auto flex w-full max-w-5xl flex-col gap-4 px-6 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm text-slate-500 dark:text-slate-400">
-          © {year} {profile.name} · 用 React 19 + TypeScript 构建
+          © {year} {profile.name} · 用 {profile.builtWith} 构建
         </p>
 
         <nav aria-label="页脚导航">
