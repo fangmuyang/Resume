@@ -15,16 +15,30 @@
  * 代价：如果内容绕过 content-guard 插件被内联（例如换成别的构建工具），
  * 这里不会报错。本项目所有构建都走 `pnpm build`，该风险可接受。
  */
-import type { Profile, Project, Resume, SkillGroup } from './schema';
+import type { PostMeta, Profile, Project, Resume, SkillGroup } from './schema';
 
 /**
  * eager + import:'default' 把 JSON 解析成对象并内联进产物，没有运行时请求。
  * 路径相对本文件：src/lib/content/ → 上溯四级到仓库根，再进 content/。
  */
-const globbed = import.meta.glob('../../../../content/**/*.json', {
+const globbed = import.meta.glob('../../../content/**/*.json', {
   eager: true,
   import: 'default',
 }) as Record<string, unknown>;
+
+/**
+ * 文章用**非 eager** 的 glob：MDX 会被编译成 React 组件，
+ * 每篇都不小（含代码高亮产物），全部内联进主包会拖慢首屏。
+ *
+ * `import: '*'` 拿到整个模块命名空间，其中 default 是文章正文组件。
+ *
+ * 注意：**元数据不从这里取**。frontmatter 导出的对象没有经过 Zod 校验，
+ * 若在运行时校验就得把 Zod 打进产物。元数据统一走构建期生成的
+ * content/posts-index.json（见 schema/post.ts 的说明）。
+ */
+const postModules = import.meta.glob<{
+  default: React.ComponentType;
+}>('../../../content/posts/*.mdx', { import: '*' });
 
 /** glob 的 key 是绝对风格路径，这里归一化成 content/ 下的相对路径 */
 function toContentRelativePath(key: string): string | undefined {
@@ -94,5 +108,51 @@ export function getProjectBySlug(slug: string): Project | undefined {
   return projects.find((project) => project.slug === slug);
 }
 
+// ---------------- 文章 ----------------
+
+/** slug → 懒加载函数。slug 取自文件名，是构建期唯一可靠的标识 */
+export const postModulesBySlug: Record<string, () => Promise<unknown>> = Object.fromEntries(
+  Object.entries(postModules).map(([path, loader]) => [
+    (path.split('/').pop() ?? path).replace(/\.mdx$/, ''),
+    loader,
+  ]),
+);
+
+/**
+ * 文章元数据（含阅读时长），来自构建期生成的 content/posts-index.json。
+ *
+ * 为什么不读 MDX 模块导出的 frontmatter：那个对象没有经过 Zod 校验，
+ * 运行时校验会把 Zod 打进产物；而用 `?raw` 读源文件又会让 MDX 插件
+ * 把原始文本当代码编译。构建期生成索引是唯一干净的路子。
+ */
+const postIndex = requireEntry('posts-index.json') as { posts: PostMeta[] };
+
+/** 全部文章元数据，已按日期倒序（排序在构建期完成） */
+export const postMetas: PostMeta[] = postIndex.posts;
+
+/** 加载单篇文章的正文组件；slug 不存在时返回 undefined */
+export async function loadPostComponent(slug: string): Promise<React.ComponentType | undefined> {
+  const loader = postModulesBySlug[slug];
+  if (loader === undefined) return undefined;
+
+  const module = (await loader()) as { default: React.ComponentType };
+  return module.default;
+}
+
+/** 全部文章标签，按出现频次降序 */
+export const postTags: string[] = (() => {
+  const counts = new Map<string, number>();
+
+  for (const meta of postMetas) {
+    for (const tag of meta.tags) {
+      counts.set(tag, (counts.get(tag) ?? 0) + 1);
+    }
+  }
+
+  return [...counts.entries()]
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .map(([tag]) => tag);
+})();
+
 // 类型再导出，方便组件只从 '@/lib/content' 一个入口取类型
-export type { Profile, Project, Resume, SkillGroup };
+export type { PostMeta, Profile, Project, Resume, SkillGroup };

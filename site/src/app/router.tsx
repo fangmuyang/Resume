@@ -3,6 +3,7 @@ import { createBrowserRouter, type RouteObject } from 'react-router';
 import RootLayout from '@/app/root-layout';
 import RouteErrorBoundary from '@/app/route-error-boundary';
 import { projectDetailLoader } from '@/features/projects/project-detail-loader';
+import { postDetailLoader, postsListLoader } from '@/features/posts/post-loaders';
 
 /**
  * 路由表。
@@ -70,8 +71,17 @@ export const routes: RouteObject[] = [
       },
       {
         path: 'posts',
+        loader: postsListLoader,
         lazy: async () => {
           const { default: Component } = await import('@/pages/posts');
+          return { Component };
+        },
+      },
+      {
+        path: 'posts/:slug',
+        loader: postDetailLoader,
+        lazy: async () => {
+          const { default: Component } = await import('@/pages/post-detail');
           return { Component };
         },
       },

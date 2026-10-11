@@ -1,17 +1,56 @@
-import { PagePlaceholder } from '@/components/page-placeholder';
+import { useLoaderData } from 'react-router';
 
+import { Reveal, RevealItem, RevealList } from '@/components/motion/reveal';
+import { Container } from '@/components/ui/container';
+import { PostCard } from '@/features/posts/post-card';
+import type { postsListLoader } from '@/features/posts/post-loaders';
+
+/**
+ * 文章列表页。
+ *
+ * 草稿（frontmatter 里 draft: true）被 loader 过滤掉，不出现在列表里。
+ * 这样"暂时隐藏一篇文章"不需要删除文件。
+ */
 export default function PostsPage() {
+  const { posts, tags } = useLoaderData<typeof postsListLoader>();
+
   return (
-    <PagePlaceholder
-      stage="阶段 5"
-      title="笔记与文章"
-      description="用 MDX 写的技术笔记，可在 Markdown 里直接嵌入 React 组件。"
-      bullets={[
-        '接入 @mdx-js/rollup，构建期收集 content/posts/*.mdx',
-        '代码高亮用 rehype-pretty-code + shiki',
-        '文章列表与详情页，支持标签分类',
-        '先写 2–3 篇学习笔记作为真实内容',
-      ]}
-    />
+    <Container className="py-16">
+      <Reveal>
+        <p className="text-brand-600 dark:text-brand-500 font-mono text-sm">posts</p>
+        <h1 className="mt-3 text-4xl font-bold tracking-tight">笔记与文章</h1>
+        <p className="mt-4 max-w-prose leading-relaxed text-slate-600 dark:text-slate-400">
+          记录这个项目里踩过的坑与验证过的结论。全部用 MDX 编写，正文里可以直接嵌入 React 组件。
+        </p>
+
+        {tags.length > 0 ? (
+          <div className="mt-6 flex flex-wrap items-center gap-2">
+            <span className="text-sm text-slate-500 dark:text-slate-400">涉及主题</span>
+            {tags.map((tag) => (
+              <span
+                key={tag}
+                className="rounded-full border border-slate-200 px-3 py-1 text-xs text-slate-600 dark:border-slate-700 dark:text-slate-400"
+              >
+                {tag}
+              </span>
+            ))}
+          </div>
+        ) : null}
+      </Reveal>
+
+      {posts.length > 0 ? (
+        <RevealList className="mt-10 grid gap-4 sm:grid-cols-2">
+          {posts.map((post) => (
+            <RevealItem key={post.slug}>
+              <PostCard post={post} />
+            </RevealItem>
+          ))}
+        </RevealList>
+      ) : (
+        <p className="mt-10 text-slate-500 dark:text-slate-400">
+          还没有文章。在 content/posts/ 下新增一个 .mdx 文件即可。
+        </p>
+      )}
+    </Container>
   );
 }

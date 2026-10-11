@@ -40,3 +40,77 @@
     }
   }
 }
+
+/*
+  代码高亮的双主题。
+  ---------------------------------------------------------------------------
+  rehype-pretty-code 配置了 { light: 'github-light', dark: 'github-dark' }，
+  shiki 会为每个 token 同时输出两套颜色，写成 CSS 变量：
+    <span style="--shiki-light: #005cc5; --shiki-dark: #79b8ff">const</span>
+  所以这里要做的就是把「用哪个变量」这件事和站点的 .dark 类绑起来。
+
+  关键点：shiki 输出的行内 style 只有两个自定义属性、没有实际颜色，
+  因此必须由 CSS 决定 color —— 这也正是它能支持主题切换的原因。
+*/
+[data-rehype-pretty-code-figure] pre {
+  padding: 1rem;
+  overflow-x: auto;
+  border-radius: var(--radius-lg);
+  background-color: var(--color-slate-50);
+}
+
+.dark [data-rehype-pretty-code-figure] pre {
+  background-color: var(--color-slate-900);
+}
+
+[data-rehype-pretty-code-figure] code {
+  display: grid;
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  line-height: 1.7;
+  background-color: transparent;
+}
+
+/* 行号：由 rehype-pretty-code 的 data-line-numbers 标记的行 */
+[data-line] {
+  padding-inline: 0.25rem;
+}
+
+/* 高亮行：markdown 里用 ```ts {2} 标记 */
+[data-highlighted-line] {
+  background-color: color-mix(in oklab, var(--color-brand-500) 12%, transparent);
+}
+
+/* 高亮词：markdown 里用 ```ts /word/ 标记 */
+[data-highlighted-chars] {
+  padding: 0.1rem 0.25rem;
+  border-radius: 0.25rem;
+  background-color: color-mix(in oklab, var(--color-brand-500) 20%, transparent);
+}
+
+/* 代码块标题：markdown 里用 ```ts title="xx.ts" 标记 */
+[data-rehype-pretty-code-title] {
+  padding: 0.5rem 1rem;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--color-slate-600);
+  border-bottom: 1px solid var(--color-slate-200);
+  border-start-start-radius: var(--radius-lg);
+  border-start-end-radius: var(--radius-lg);
+  background-color: var(--color-slate-100);
+}
+
+.dark [data-rehype-pretty-code-title] {
+  color: var(--color-slate-400);
+  border-bottom-color: var(--color-slate-800);
+  background-color: var(--color-slate-800);
+}
+
+/* token 颜色：浅色用 --shiki-light，深色用 --shiki-dark */
+[data-rehype-pretty-code-figure] code span {
+  color: var(--shiki-light);
+}
+
+.dark [data-rehype-pretty-code-figure] code span {
+  color: var(--shiki-dark);
+}
