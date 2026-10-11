@@ -13,10 +13,21 @@ nodeLinker: hoisted
 confirmModulesPurge: false
 
 # pnpm 11 blocks dependency install scripts (postinstall) by default.
-# esbuild needs its install script to place the platform binary, so allow it.
-# sharp is the native image library behind @vite-pwa/assets-generator; without
-# its install script the prebuilt binary is missing and icon generation fails
-# with "Could not load the sharp module using the win32-x64 runtime".
+# These two need their install script to place a platform binary:
+#
+#   esbuild - Vite's bundler, a direct devDependency.
+#
+#   sharp   - NOT a direct dependency. It comes in transitively through
+#             vite-plugin-pwa -> @vite-pwa/assets-generator. We do not use
+#             that generator: icons are produced by scripts/build-icons.ts
+#             with Python/Pillow, because sharp needs a platform-specific
+#             binary download that is blocked in restricted networks.
+#             It is listed here only so that `pnpm install` does not report
+#             unapproved build scripts and abort.
+#
+# Warning: running `pnpm approve-builds` interactively rewrites this section
+# and can write the literal string "set this to true or false" as a value,
+# which then breaks every later install. Keep the values as real booleans.
 allowBuilds:
   esbuild: true
   sharp: true
