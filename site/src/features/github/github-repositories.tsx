@@ -4,7 +4,7 @@ import { Reveal, RevealItem, RevealList } from '@/components/motion/reveal';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { GithubApiError } from '@/features/github/github-api';
+import { GithubApiError, type GithubErrorKind } from '@/features/github/github-api';
 import { useGithubRepositories } from '@/features/github/use-github-repositories';
 import { formatYearMonth } from '@/lib/format';
 
@@ -176,7 +176,7 @@ function GithubErrorState({ error, onRetry }: { error: Error; onRetry: () => voi
       case 'rate-limited':
         return error.resetAt === null
           ? 'GitHub 未认证接口每小时限 60 次，请稍后再试。'
-          : `GitHub 未认证接口每小时限 60 次，额度将在 ${formatResetTime(error.resetAt)} 后重置。`;
+          : `GitHub 未认证接口每小时限 60 次，额度将在约 ${formatResetTime(error.resetAt)}后重置。`;
       case 'invalid-response':
         return '接口返回的数据结构有变化，重试无用，需要更新代码。';
       case 'network':
@@ -184,8 +184,19 @@ function GithubErrorState({ error, onRetry }: { error: Error; onRetry: () => voi
     }
   })();
 
-  // 结构不符是代码问题，重试没有意义，不给按钮
-  const canRetry = !isKnownError || error.kind !== 'invalid-response';
+  /**
+   * 哪些错误不该给重试按钮。
+   *
+   * - `invalid-response`：接口结构变了，重试结果一样；
+   * - `rate-limited`：**重试会消耗更多额度**，让用户等得更久。
+   *
+   * 第一版这里只排除了 `invalid-response`，漏了限流 ——
+   * 于是界面上出现了"重新加载"按钮，用户点一次就多消耗一次额度。
+   * 这是测试抓出来的真实缺陷，不是测试写错了。
+   */
+  const NON_RETRYABLE: readonly GithubErrorKind[] = ['invalid-response', 'rate-limited'];
+
+  const canRetry = !isKnownError || !NON_RETRYABLE.includes(error.kind);
 
   return (
     <div className="grid justify-items-start gap-3 rounded-lg border border-dashed border-slate-300 p-6 dark:border-slate-700">
