@@ -1,11 +1,15 @@
 # 方睿杰 · 个人网站
 
+[![CI](https://github.com/fangmuyang/resume/actions/workflows/ci.yml/badge.svg)](https://github.com/fangmuyang/resume/actions/workflows/ci.yml)
+[![Deploy](https://github.com/fangmuyang/resume/actions/workflows/deploy.yml/badge.svg)](https://github.com/fangmuyang/resume/actions/workflows/deploy.yml)
+
 用 React 19 + TypeScript 从零构建的个人网站，内容源自一份 PDF 简历。这个仓库同时是一份
 **可运行的学习范本**：每一层技术选型都对应一个真实需求，并在 `docs/` 里配有说明。
 
-- 站点地址（规划）：https://fangmuyang.github.io/resume/
+- 站点地址：https://fangmuyang.github.io/resume/
 - 内容来源：`MyResume.pdf`
 - 阶段路线图：[`docs/ROADMAP.md`](docs/ROADMAP.md)
+- 部署与自定义域名：[`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)
 
 ---
 
@@ -42,7 +46,8 @@
 | `verify:seo`     | sitemap 缺页、manifest 的 scope 与 base 不一致 |
 | `validate`       | 内容不符合 schema、占位符未清理                |
 
-后续阶段会加入 GitHub Actions 与 GitHub Pages 部署，详见路线图。
+CI 与部署见 [`.github/workflows/`](.github/workflows/)；自定义域名与排查清单见
+[`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)。
 
 ## 目录结构
 
@@ -83,6 +88,7 @@
 │   ├── eslint.config.js  # ESLint 9 扁平配置
 │   ├── tsconfig.json     # 严格模式全开
 │   └── vite.config.ts    # 内容校验插件 + MDX 配置 + vendor 分包
+├── .github/workflows/    # CI（校验 + E2E）与 GitHub Pages 部署
 ├── .husky/               # Git 提交钩子
 ├── lint-staged.config.js
 └── commitlint.config.js
@@ -106,8 +112,8 @@ pnpm install                # 安装根级提交钩子依赖
 
 ```bash
 pnpm dev             # 启动开发服务器
-pnpm build           # 内容校验 + 类型检查 + 生产构建 + 产物验证
-pnpm check           # 内容校验 + 零硬编码检查 + 类型检查 + ESLint + 格式检查（CI 用）
+pnpm build           # 内容校验 + 类型检查 + 生产构建 + 每路由入口 + 全部守卫
+pnpm check           # 内容校验 + 零硬编码检查 + 类型检查 + ESLint + 格式 + 单测（CI 用）
 pnpm validate        # 只校验 content/ 内容是否合法
 pnpm extract         # 重新从 MyResume.pdf 生成 content/
 pnpm build:posts-index  # 重新扫描 MDX frontmatter 生成文章索引
@@ -116,15 +122,26 @@ pnpm verify:content  # 检查页面是否有硬编码文案（应全部来自 co
 pnpm verify:build    # 检查产物：base 前缀、basename、分块、防 FOUC 脚本
 pnpm verify:privacy  # 扫描产物，确认私密字段（手机号）没有泄漏
 pnpm verify:search   # 检查搜索索引覆盖与跳转目标是否有效
-pnpm test            # 单元与组件测试（Vitest，91 个用例）
+pnpm verify:seo      # sitemap / robots / manifest / 路由入口 / 404 回退
+pnpm test            # 单元与组件测试（Vitest，108 个用例）
 pnpm test:coverage   # 带覆盖率（阈值 85%）
-pnpm test:e2e        # E2E（需先执行 pnpm --dir site run test:e2e:install）
+pnpm test:e2e        # E2E（146 个用例，桌面 + 移动端）
+pnpm check:full      # check + E2E 的完整门禁
+
+# 以自定义域名的形态验证（资源前缀会变成 /）
+VITE_SITE_URL=https://fangmu.online pnpm build
+
 pnpm typecheck       # 仅类型检查
 pnpm lint            # ESLint
 pnpm format          # Prettier 写入格式化
 ```
 
-你也可以进入 `site/` 目录直接执行等价的 `pnpm <script>`。
+你可以进入 `site/` 目录直接执行等价的 `pnpm <script>`。
+
+> **E2E 的浏览器**：本地默认用系统已安装的 Chrome，
+> 因此不需要下载 Playwright 的浏览器二进制。
+> CI 上会自动改用 Playwright 自带的 Chromium（见 `.github/workflows/ci.yml`）。
+> 若本地也想用自带浏览器，执行 `pnpm --dir site run test:e2e:install`。
 
 ## 路由与主题
 
@@ -157,11 +174,12 @@ pnpm format          # Prettier 写入格式化
 ### 「零硬编码」是可执行的检查
 
 页面文案必须全部来自 `content/`，这条约定由 `pnpm verify:content` 自动把关：
-它从 `content/` 提取事实型字符串，扫描 `src/pages` 与 `src/components`，
-命中即报错并给出文件与行号。
+它从 `content/` 提取事实型字符串，扫描**整个 `src/`**（阶段 10 起从
+`src/pages` + `src/components` 扩大而来 —— 之前把文案放进 `src/lib/` 就能绕过检查，
+一个"只覆盖部分目录"的守卫比没有守卫更危险），命中即报错并给出文件与行号。
 
-判据刻意收紧到只报真问题（技术名、注释里的框架名、公开资产的 URL 片段不算），
-因为一个动辄几十条误报的检查很快就会被 ignore 掉。
+判据刻意收紧到只报真问题（技术名、注释里的框架名、公开资产的 URL 片段、
+`status` 这类枚举标识符不算），因为一个动辄几十条误报的检查很快就会被 ignore 掉。
 
 ### 隐私边界在「哪些文件进入产物」这一层
 

@@ -2,11 +2,78 @@
 
 > 个人网站学习项目 · React 19 + TypeScript + Vite
 > 内容来源：`MyResume.pdf`（1 页中文简历，Chromium/Skia 打印导出）
-> 状态：**阶段 0–10 已完成并验证**，等待补充素材后进入阶段 11
+> 状态：**阶段 0–11 已完成并验证**，等待补充素材后进入阶段 12
 
 ---
 
 ## 0. 阶段完成记录
+
+### 阶段 11 · CI/CD + GitHub Pages 部署（已完成）
+
+| 项目 | 结果 |
+| --- | --- |
+| CI | `.github/workflows/ci.yml`：两个并行 job（校验 / E2E），缓存 pnpm store |
+| 部署 | `.github/workflows/deploy.yml`：`upload-pages-artifact` + `deploy-pages`（不用 gh-pages 分支） |
+| 每路由 HTML 入口 | `build-prerender.ts` 生成 12 个入口，深层路由直接访问返回 **200** |
+| 404 回退 | `404.html` 为 SPA 外壳，未枚举路径显示应用内 404 界面 |
+| 自定义域名 | `VITE_SITE_URL` 同时决定站点地址与资源前缀；两种形态都已实测 |
+| 部署文档 | `docs/DEPLOYMENT.md`：域名切换、DNS、ICP 备案说明、限制、排查清单 |
+| 验证结果 | check（108 单测）✓ build（含 7 个守卫）✓ **E2E 146 ✓** |
+
+**阶段 11 解决的问题与踩坑记录**
+
+1. **自定义域名时资源前缀必须是 `/`，这是本阶段最关键的约束。**
+   域名的根就是站点根，没有 `/resume/` 这一段 ——
+   继续用子路径会让所有资源 404、整站白屏。
+   而"站点地址"与"资源前缀"必须同时改变（否则 canonical 指向一个资源加载不出来的地址），
+   所以改成由**同一个变量** `VITE_SITE_URL` 推导，而不是两个独立配置项。
+
+2. **`toAbsoluteUrl` 的推导我算错多次，最后靠单测固定下来。**
+   第一次把 `SITE_ORIGIN` 与 `BASE_PREFIX` 拼了两次，生成出 `…/resume/resume/`
+   —— 而**构建不报错**，只有真去看 sitemap 内容才发现。
+   排查时又在临时命令里把正则的 `$` 误写成 `\$`，导致"去掉尾部斜杠"静默失效，
+   我得打印真实值才看出问题。
+   根本原因是 `build-seo.ts` 里维护了一份**独立的**重复实现，两份实现分了叉。
+   改为复用 `toAbsoluteUrl`，并补了 17 个单测把三种部署形态固定下来。
+
+3. **CI 里 `${{ vars.SITE_URL }}` 未配置时是空字符串，不是不传。**
+   如果用 `??` 判断，空字符串会被当成有效值 —— base 变成 `/`，
+   部署到项目站点后整站白屏。改成"空字符串也算未设置"。
+
+4. **`node-version-file` 不读 `package.json` 的 `engines`。**
+   它只认 `.nvmrc` / `.node-version` 这类文件。写成 `site/package.json`
+   会让 setup-node 找不到版本文件。改用 `node-version`，并在根 `package.json`
+   声明 `packageManager: pnpm@11.7.0` 让 `pnpm/action-setup` 读版本。
+
+5. **sitemap / robots 必须在构建**之后**生成，不能放 `public/`。**
+   它们包含绝对地址，而地址来自 `VITE_SITE_URL`。
+   若先生成到 `public/` 再由 Vite 拷贝，自定义域名部署时 `public/` 里
+   会残留上一次用默认域名生成的旧文件 —— sitemap 指向 `github.io/resume`
+   而 canonical 指向 `fangmu.online`，搜索引擎收到自相矛盾的信号。
+   改成构建后直接写 `dist/`，彻底没有"陈旧副本"的空间。
+
+6. **我在测试里假设了错误的状态码。**
+   "未枚举路径应返回 404" —— 但 `vite preview` 自带 history-fallback，
+   返回的是 200；GitHub Pages 才返回 404。**状态码取决于托管实现**，
+   不是本项目能控制的。改成只断言对两者都成立、也真正重要的事：
+   应用能接管并显示自己的 404 界面。差异写进了部署文档。
+
+7. **`verify-build.ts` 里也有一份写死的 `REPO_NAME`。**
+   这是同一份部署事实的**第三处**副本。改成从产物自身**反推**前缀 ——
+   产物就是唯一真相，脚本只检查"内部是否自洽"，
+   于是无论部署在 `/` 还是 `/resume/` 都成立。
+
+**验收标准 vs 实际状态（必须说清）**
+
+阶段表里的验收标准是「CI 通过 + 部署成功」。当前状态：
+
+- CI **配置已完成**，但**尚未在 GitHub 上真实跑过**（本地无远端仓库）；
+- 部署**配置已完成**，同样**尚未真实部署**。
+
+所以这一阶段是"配置完成、待真机验证"。
+**已实测**的是：两种域名形态的构建与全部 7 个守卫、
+E2E 覆盖路由入口齐备性与 404 兜底行为（跑在 `vite preview` 上，不是 GitHub Pages）。
+
 
 ### 阶段 10 · SEO + PWA + E2E 首次真机验证（已完成）
 
@@ -621,7 +688,7 @@ Zustand(theme/search/tag) ──────────────▶  React R
 | **8**  | GitHub API + Query + MSW        | TanStack Query、MSW                                                       | 动态仓库列表有 loading/error 态；测试中网络被 mock                    | ✅ 完成                  |
 | **9**  | 测试体系 + E2E                  | Vitest、RTL、Playwright、覆盖率                                           | 单测与 E2E 全绿                                                       | ✅ 完成                  |
 | **10** | SEO + PWA + 可访问性 + 性能     | React 19 metadata、vite-plugin-pwa、a11y、Lighthouse                      | PWA 可安装（E2E 实测）；Lighthouse 四维 ≥ 90                          | ⚠️ PWA 已验收 · 性能未测 |
-| **11** | CI/CD + 部署 + 自定义域名       | GitHub Actions、GitHub Pages、404.html 回退                               | push 后自动部署成功；子路径刷新不 404                                 | ⬜                       |
+| **11** | CI/CD + 部署 + 自定义域名       | GitHub Actions、GitHub Pages、404.html 回退                               | push 后自动部署成功；子路径刷新不 404                                 | ⚠️ 配置完成 · 待真机部署 |
 | **12** | 学习文档                        | 归档                                                                      | `docs/LEARNING.md` 覆盖 9 大章节                                      | ⬜                       |
 
 每个阶段交付时统一包含：**目标 · 步骤 · 关键代码 · 代码解释 · 常见坑 · 练习建议 · 检查点**。

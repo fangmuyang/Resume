@@ -7,13 +7,18 @@
   "engines": {
     "node": ">=22.18.0"
   },
+  "packageManager": "pnpm@11.7.0",
   "scripts": {
     "prepare": "husky",
     "dev": "pnpm --dir site run dev",
     "build": "pnpm --dir site run build",
+    "preview": "pnpm --dir site run preview",
     "lint": "pnpm --dir site run lint",
     "typecheck": "pnpm --dir site run typecheck",
     "format": "pnpm --dir site run format",
+    "test": "pnpm --dir site run test",
+    "test:coverage": "pnpm --dir site run test:coverage",
+    "test:e2e": "pnpm --dir site run test:e2e",
     "extract": "pnpm --dir site run extract",
     "build:posts-index": "pnpm --dir site run build:posts-index",
     "build:content": "pnpm --dir site run build:content",
@@ -22,7 +27,8 @@
     "verify:build": "pnpm --dir site run verify:build",
     "verify:content": "pnpm --dir site run verify:content",
     "verify:privacy": "pnpm --dir site run verify:privacy",
-    "verify:search": "pnpm --dir site run verify:search"
+    "verify:search": "pnpm --dir site run verify:search",
+    "verify:seo": "pnpm --dir site run verify:seo"
   },
   "devDependencies": {
     "@commitlint/cli": "19.8.1",
