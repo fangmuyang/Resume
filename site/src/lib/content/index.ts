@@ -23,7 +23,18 @@
  * 通配 glob 会把它匹配到的**所有**文件内联进产物 —— 包括不该公开的源文件。
  * 这是一次真实的教训：隐私边界必须在"哪些文件进入产物"这一层划定。
  * 代价是新增内容文件时要同步 PUBLIC_ENTRY_MODULES，这个显式约束是值得的。
- */ import type { PostMeta, Profile, Project, Resume, ResumeAsset, SkillGroup } from './schema';
+ */
+import type {
+  EnumLabels,
+  PageMeta,
+  PageMetaCollection,
+  PostMeta,
+  Profile,
+  Project,
+  Resume,
+  ResumeAsset,
+  SkillGroup,
+} from './schema';
 
 /**
  * 公开条目：每个文件单独 glob。
@@ -38,6 +49,14 @@ const PUBLIC_ENTRY_MODULES = {
   resume: import.meta.glob('../../../content/resume.json', { eager: true, import: 'default' }),
   skills: import.meta.glob('../../../content/skills.json', { eager: true, import: 'default' }),
   resumeAsset: import.meta.glob('../../../content/resume-asset.json', {
+    eager: true,
+    import: 'default',
+  }),
+  pageMeta: import.meta.glob('../../../content/page-meta.json', {
+    eager: true,
+    import: 'default',
+  }),
+  enumLabels: import.meta.glob('../../../content/enum-labels.json', {
     eager: true,
     import: 'default',
   }),
@@ -89,6 +108,23 @@ export const resumeAsset = singleEntry(
   PUBLIC_ENTRY_MODULES.resumeAsset,
   'resume-asset.json',
 ) as ResumeAsset;
+
+/** 各页面的 SEO 文案（标题与描述） */
+export const pageMeta = singleEntry(
+  PUBLIC_ENTRY_MODULES.pageMeta,
+  'page-meta.json',
+) as PageMetaCollection;
+
+/**
+ * 枚举值的展示标签。
+ *
+ * 数据模型用英文枚举（`completed` / `job`）保证稳定，
+ * 界面上的中文来自这里 —— 所以组件里不该再出现 `{ completed: '已完成' }` 这类映射。
+ */
+export const enumLabels = singleEntry(
+  PUBLIC_ENTRY_MODULES.enumLabels,
+  'enum-labels.json',
+) as EnumLabels;
 
 /** 按 order 升序、再按名称排序，保证渲染顺序稳定 */
 function byOrderThenName(a: Project, b: Project): number {
@@ -170,4 +206,13 @@ export const postTags: string[] = (() => {
 })();
 
 // 类型再导出，方便组件只从 '@/lib/content' 一个入口取类型
-export type { PostMeta, Profile, Project, Resume, ResumeAsset, SkillGroup };
+export type {
+  PageMeta,
+  PageMetaCollection,
+  PostMeta,
+  Profile,
+  Project,
+  Resume,
+  ResumeAsset,
+  SkillGroup,
+};

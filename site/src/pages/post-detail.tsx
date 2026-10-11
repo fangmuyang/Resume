@@ -8,6 +8,8 @@ import { Container } from '@/components/ui/container';
 import { Callout, TerminalSession } from '@/features/posts/mdx-components';
 import type { PostDetailData } from '@/features/posts/post-loaders';
 import { formatYearMonth } from '@/lib/format';
+import { Seo, StructuredData } from '@/lib/seo/seo';
+import { buildArticleStructuredData } from '@/lib/seo/structured-data';
 
 /**
  * 注入给 MDX 的自定义组件。
@@ -40,6 +42,26 @@ export default function PostDetailPage() {
 
   return (
     <Container className="py-16">
+      <Seo
+        title={meta.title}
+        description={meta.summary}
+        path={`/posts/${meta.slug}`}
+        type="article"
+        publishedTime={meta.date}
+        tags={meta.tags}
+      />
+      {/* 文章结构化数据：让搜索引擎理解这是技术文章，并带上作者与标签 */}
+      <StructuredData
+        data={buildArticleStructuredData({
+          title: meta.title,
+          description: meta.summary,
+          path: `/posts/${meta.slug}`,
+          publishedTime: meta.date,
+          updatedTime: meta.updated,
+          tags: meta.tags,
+        })}
+      />
+
       <Reveal>
         <Link
           to="/posts"

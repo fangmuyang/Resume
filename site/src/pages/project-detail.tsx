@@ -11,6 +11,7 @@ import { ProjectCard } from '@/features/projects/project-card';
 import type { projectDetailLoader } from '@/features/projects/project-detail-loader';
 import { formatPeriod } from '@/lib/format';
 import { resolveAssetUrl } from '@/lib/projects';
+import { Seo } from '@/lib/seo/seo';
 
 /** 详情页的内容分区。用数据描述结构，避免四段几乎相同的 JSX 重复四遍。 */
 const SECTIONS = [
@@ -38,6 +39,18 @@ export default function ProjectDetailPage() {
 
   return (
     <Container className="py-16">
+      <Seo
+        title={project.name}
+        // 摘要是待补充占位时，退化成"角色 + 技术栈"，避免把 TODO 文案送进搜索结果
+        description={
+          project.summary.startsWith('TODO:')
+            ? `${project.name}：${project.role}，使用 ${project.tech.join('、')}。`
+            : project.summary
+        }
+        path={`/projects/${project.slug}`}
+        type="article"
+      />
+
       <Reveal>
         <Link
           to="/projects"

@@ -416,6 +416,15 @@ async function main(): Promise<void> {
       githubUsername: 'fangmuyang',
       githubRepoLimit: 6,
     },
+    seo: {
+      siteName: '个人网站',
+      defaultDescription: '方睿杰的个人网站：前端开发、项目作品与技术笔记',
+      websiteDescription: '记录前端开发实践、项目作品与技术笔记的个人站点',
+      language: 'zh-CN',
+      direction: 'ltr',
+      shortName: '方睿杰',
+      themeColor: '#4f46e5',
+    },
   };
 
   // ---------------- resume.json ----------------

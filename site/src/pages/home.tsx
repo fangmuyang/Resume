@@ -7,8 +7,10 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Container } from '@/components/ui/container';
-import { featuredProjects, profile, resume, skillGroups } from '@/lib/content';
+import { featuredProjects, pageMeta, profile, resume, skillGroups } from '@/lib/content';
 import { formatPeriod } from '@/lib/format';
+import { Seo, StructuredData } from '@/lib/seo/seo';
+import { buildWebsiteStructuredData } from '@/lib/seo/structured-data';
 
 /**
  * 首页。
@@ -21,6 +23,10 @@ export default function HomePage() {
 
   return (
     <Container className="py-16">
+      <Seo title={pageMeta.home.title} description={pageMeta.home.description} path="/" />
+      {/* 站点级结构化数据放在首页：搜索引擎从这里建立"站点是什么"的认知 */}
+      <StructuredData data={buildWebsiteStructuredData()} />
+
       {/* ---------- Hero ---------- */}
       <Reveal>
         <section className="grid gap-6">

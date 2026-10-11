@@ -4,6 +4,8 @@ import { Reveal, RevealItem, RevealList } from '@/components/motion/reveal';
 import { Container } from '@/components/ui/container';
 import { PostCard } from '@/features/posts/post-card';
 import type { postsListLoader } from '@/features/posts/post-loaders';
+import { pageMeta } from '@/lib/content';
+import { Seo } from '@/lib/seo/seo';
 
 /**
  * 文章列表页。
@@ -16,11 +18,13 @@ export default function PostsPage() {
 
   return (
     <Container className="py-16">
+      <Seo title={pageMeta.posts.title} description={pageMeta.posts.description} path="/posts" />
+
       <Reveal>
         <p className="text-brand-600 dark:text-brand-500 font-mono text-sm">posts</p>
         <h1 className="mt-3 text-4xl font-bold tracking-tight">笔记与文章</h1>
         <p className="mt-4 max-w-prose leading-relaxed text-slate-600 dark:text-slate-400">
-          记录这个项目里踩过的坑与验证过的结论。全部用 MDX 编写，正文里可以直接嵌入 React 组件。
+          {pageMeta.posts.description}
         </p>
 
         {tags.length > 0 ? (

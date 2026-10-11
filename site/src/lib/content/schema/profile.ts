@@ -51,6 +51,37 @@ export const integrationsSchema = z.object({
 
 export type Integrations = z.infer<typeof integrationsSchema>;
 
+/**
+ * 站点级 SEO 文案。
+ *
+ * 放在内容里的理由与 builtWith 相同：这些文字会随站点定位调整，
+ * 而且它们**出现在搜索结果与社交分享卡片上** ——
+ * 属于需要反复推敲的内容，不该埋在组件代码里。
+ */
+export const seoSchema = z.object({
+  /** 站点名，用于 `<title>` 的「页面标题 · 站点名」形式 */
+  siteName: z.string().min(1),
+  /** index.html 里的默认描述，也是首页的 description */
+  defaultDescription: z.string().min(1),
+  /** 结构化数据里的站点描述 */
+  websiteDescription: z.string().min(1),
+  /** 语言代码，用于 `<html lang>` 与 JSON-LD 的 inLanguage */
+  language: z.string().min(2),
+  /** 书写方向，PWA manifest 需要 */
+  direction: z.enum(['ltr', 'rtl']).default('ltr'),
+  /**
+   * PWA manifest 里的短名称。
+   *
+   * 与 siteName 分开是因为它出现在手机主屏图标下面 ——
+   * 那里只能显示约 12 个字符，长了会被截断成省略号。
+   */
+  shortName: z.string().min(1).max(12, 'PWA 短名称建议不超过 12 个字符'),
+  /** 浏览器地址栏 / 状态栏的主题色，应与品牌色一致 */
+  themeColor: z.string().regex(/^#[0-9a-fA-F]{6}$/, '主题色需为 #RRGGBB 格式'),
+});
+
+export type SeoConfig = z.infer<typeof seoSchema>;
+
 export const profileSchema = z.object({
   name: z.string().min(1),
   /** 别名/常用网名，没有则为 null */
@@ -83,6 +114,15 @@ export const profileSchema = z.object({
   links: z.array(socialLinkSchema).default([]),
   privacy: privacySchema.default({ showPhone: false, allowResumeDownload: true }),
   integrations: integrationsSchema.default({ githubUsername: null, githubRepoLimit: 6 }),
+  seo: seoSchema.default({
+    siteName: '个人网站',
+    defaultDescription: '个人网站：前端开发、项目作品与技术笔记',
+    websiteDescription: '个人网站',
+    language: 'zh-CN',
+    direction: 'ltr',
+    shortName: '个人网站',
+    themeColor: '#4f46e5',
+  }),
 });
 
 export type Profile = z.infer<typeof profileSchema>;

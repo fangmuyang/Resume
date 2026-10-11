@@ -1,0 +1,13 @@
+{
+  "projectStatus": {
+    "active": "进行中",
+    "completed": "已完成",
+    "archived": "已归档"
+  },
+  "contactTopic": {
+    "job": "实习 / 工作机会",
+    "project": "项目合作",
+    "feedback": "对本站的建议",
+    "other": "其他"
+  }
+}

@@ -5,19 +5,27 @@ import { TextWithPlaceholder } from '@/components/text-with-placeholder';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import type { Project } from '@/lib/content';
+import { enumLabels } from '@/lib/content';
 import { formatPeriod } from '@/lib/format';
 import { resolveAssetUrl } from '@/lib/projects';
 import { cn } from '@/lib/utils';
 
-/** 项目状态对应的展示文案与配色 */
-const STATUS_META: Record<Project['status'], { label: string; className: string }> = {
-  active: {
-    label: '进行中',
-    className: 'border-emerald-500/40 text-emerald-700 dark:text-emerald-400',
-  },
-  completed: { label: '已完成', className: 'border-slate-300 text-slate-600 dark:text-slate-400' },
-  archived: { label: '已归档', className: 'border-slate-300 text-slate-500 dark:text-slate-500' },
-};
+/**
+ * 项目状态的**配色**（标签文案来自内容）。
+ *
+ * 文案与配色分开处理的原因：配色属于设计系统的决定，会随主题调整；
+ * 而文案是内容，应该能被改而不动代码。
+ * 第一版把两者写在同一张表里（`{ completed: { label: '已完成', ... } }`），
+ * 零硬编码守卫扩大到整个 src/ 之后立刻把它抓了出来。
+ *
+ * 这张表用 `satisfies` 绑定到内容的键集合上 ——
+ * 内容里新增一个状态而这里忘了配色时，类型检查会失败。
+ */
+const STATUS_CLASS = {
+  active: 'border-emerald-500/40 text-emerald-700 dark:text-emerald-400',
+  completed: 'border-slate-300 text-slate-600 dark:text-slate-400',
+  archived: 'border-slate-300 text-slate-500 dark:text-slate-500',
+} satisfies Record<keyof typeof enumLabels.projectStatus, string>;
 
 export interface ProjectCardProps {
   project: Project;
@@ -38,7 +46,8 @@ export function ProjectCard({
   className,
 }: ProjectCardProps) {
   const cover = resolveAssetUrl(project.cover);
-  const status = STATUS_META[project.status];
+  const statusLabel = enumLabels.projectStatus[project.status];
+  const statusClass = STATUS_CLASS[project.status];
 
   return (
     <Card className={cn('group flex h-full flex-col overflow-hidden', className)}>
@@ -72,8 +81,8 @@ export function ProjectCard({
               {project.name}
             </Link>
           </CardTitle>
-          <Badge variant="outline" className={status.className}>
-            {status.label}
+          <Badge variant="outline" className={statusClass}>
+            {statusLabel}
           </Badge>
         </div>
 

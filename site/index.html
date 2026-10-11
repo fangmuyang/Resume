@@ -8,6 +8,27 @@
     <title>方睿杰 · 个人网站</title>
 
     <!--
+      图标链接。
+
+      manifest 与 theme-color 由 vite-plugin-pwa 在构建时注入，但
+      favicon / apple-touch-icon 的 <link> 需要在这里声明 ——
+      插件只负责 manifest，不会替你决定用哪些图标文件。
+
+      apple-touch-icon 必须显式声明：iOS 不会去读 manifest 的 icons。
+    -->
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+
+    <!--
+      这些是站点级默认标签，用于**不执行 JavaScript 的爬虫**
+      （多数社交平台的预览抓取器）。执行 JS 的爬虫会看到 React 渲染的
+      每页元数据（见 src/lib/seo/seo.tsx）。
+
+      内容与 content/profile-public.json 的 seo 字段保持一致；
+      scripts/verify-seo.ts 会在构建后检查这一点。
+    -->
+
+    <!--
       首屏主题引导脚本。必须是阻塞式（不能 defer / async / type=module），
       否则浏览器会先用默认样式绘制一帧白色，随后 React 才加上 .dark —— 这就是 FOUC。
 

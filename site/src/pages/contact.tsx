@@ -4,7 +4,8 @@ import { Reveal } from '@/components/motion/reveal';
 import { TextWithPlaceholder } from '@/components/text-with-placeholder';
 import { Container } from '@/components/ui/container';
 import { ContactForm } from '@/features/contact/contact-form';
-import { profile } from '@/lib/content';
+import { profile, pageMeta } from '@/lib/content';
+import { Seo } from '@/lib/seo/seo';
 
 /**
  * 联系方式页。
@@ -15,11 +16,17 @@ import { profile } from '@/lib/content';
 export default function ContactPage() {
   return (
     <Container className="py-16">
+      <Seo
+        title={pageMeta.contact.title}
+        description={pageMeta.contact.description}
+        path="/contact"
+      />
+
       <Reveal>
         <p className="text-brand-600 dark:text-brand-500 font-mono text-sm">contact</p>
         <h1 className="mt-3 text-4xl font-bold tracking-tight">联系方式</h1>
         <p className="mt-4 max-w-prose leading-relaxed text-slate-600 dark:text-slate-400">
-          有实习机会、项目合作或对本站的建议，都欢迎联系我。
+          {pageMeta.contact.description}
         </p>
       </Reveal>
 

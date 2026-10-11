@@ -9,6 +9,8 @@
  */
 import { parseFrontmatter } from './post-frontmatter';
 import {
+  enumLabelsSchema,
+  pageMetaCollectionSchema,
   parseWithContext,
   postFrontmatterSchema,
   profileSchema,
@@ -16,6 +18,8 @@ import {
   resumeAssetSchema,
   resumeSchema,
   skillGroupsSchema,
+  type EnumLabels,
+  type PageMetaCollection,
   type PostMeta,
   type Profile,
   type Project,
@@ -37,6 +41,8 @@ export const CONTENT_FILES = {
   resume: 'resume.json',
   skills: 'skills.json',
   resumeAsset: 'resume-asset.json',
+  pageMeta: 'page-meta.json',
+  enumLabels: 'enum-labels.json',
 } as const;
 
 /** 隐私字段的源头文件，只有构建脚本读取它 */
@@ -67,6 +73,8 @@ export interface ValidatedContent {
   skillGroups: SkillGroup[];
   projects: Project[];
   resumeAsset: ResumeAsset;
+  pageMeta: PageMetaCollection;
+  enumLabels: EnumLabels;
 }
 
 /** 按 order 升序、再按名称排序，保证渲染顺序稳定 */
@@ -161,6 +169,18 @@ export function validateAllContent(
     `content/${CONTENT_FILES.resumeAsset}`,
   );
 
+  const pageMeta = parseWithContext(
+    pageMetaCollectionSchema,
+    read(CONTENT_FILES.pageMeta),
+    `content/${CONTENT_FILES.pageMeta}`,
+  );
+
+  const enumLabels = parseWithContext(
+    enumLabelsSchema,
+    read(CONTENT_FILES.enumLabels),
+    `content/${CONTENT_FILES.enumLabels}`,
+  );
+
   const projects = projectPaths.map((path) => validateProject(read(path), `content/${path}`));
 
   // slug 唯一性无法用单个文件内的 schema 表达，必须在集合层面检查 ——
@@ -179,5 +199,7 @@ export function validateAllContent(
     skillGroups,
     projects: [...projects].sort(byOrderThenName),
     resumeAsset,
+    pageMeta,
+    enumLabels,
   };
 }

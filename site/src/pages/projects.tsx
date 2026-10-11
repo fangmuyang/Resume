@@ -5,8 +5,9 @@ import { LazyGithubRepositories } from '@/features/github/lazy-github-repositori
 import { ProjectCard } from '@/features/projects/project-card';
 import { TagFilter } from '@/features/projects/tag-filter';
 import { useProjectFilter } from '@/features/projects/filter-store';
-import { profile, projects } from '@/lib/content';
+import { profile, pageMeta, projects } from '@/lib/content';
 import { collectTags, filterProjects } from '@/lib/projects';
+import { Seo } from '@/lib/seo/seo';
 
 /**
  * 作品集列表页。
@@ -16,17 +17,23 @@ import { collectTags, filterProjects } from '@/lib/projects';
  * 因此不会出现"分享出去的链接打开后筛选丢了"这类问题。
  */
 export default function ProjectsPage() {
-  const { selectedTags, toggle, clear } = useProjectFilter();
+  const { selectedTags, matchMode, toggle, setMatchMode, clear } = useProjectFilter();
 
   // 标签从内容里聚合，不写死在页面里 —— 页面文案与标签必须可维护
   const tags = collectTags(projects);
-  const visible = filterProjects(projects, selectedTags);
+  const visible = filterProjects(projects, selectedTags, matchMode);
 
   // 列表页引导语同样来自内容：约定只有一个项目设置 listIntro
   const intro = projects.find((project) => project.listIntro !== null)?.listIntro ?? null;
 
   return (
     <Container className="py-16">
+      <Seo
+        title={pageMeta.projects.title}
+        description={pageMeta.projects.description}
+        path="/projects"
+      />
+
       <Reveal>
         <p className="text-brand-600 dark:text-brand-500 font-mono text-sm">projects</p>
         <h1 className="mt-3 text-4xl font-bold tracking-tight">项目与作品</h1>
@@ -44,6 +51,8 @@ export default function ProjectsPage() {
           onToggle={toggle}
           onClear={clear}
           resultCount={visible.length}
+          matchMode={matchMode}
+          onMatchModeChange={setMatchMode}
         />
       </Reveal>
 

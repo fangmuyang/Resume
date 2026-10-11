@@ -5,9 +5,11 @@ import { TextWithPlaceholder } from '@/components/text-with-placeholder';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Container } from '@/components/ui/container';
-import { profile, resume, skillGroups } from '@/lib/content';
+import { profile, pageMeta, resume, skillGroups } from '@/lib/content';
 import { isPlaceholder } from '@/lib/content-placeholder';
 import { formatPeriod } from '@/lib/format';
+import { Seo, StructuredData } from '@/lib/seo/seo';
+import { buildPersonStructuredData } from '@/lib/seo/structured-data';
 
 /**
  * 「关于我」页。
@@ -25,6 +27,10 @@ export default function AboutPage() {
 
   return (
     <Container className="py-16">
+      <Seo title={pageMeta.about.title} description={pageMeta.about.description} path="/about" />
+      {/* 个人资料结构化数据：让搜索引擎知道这是一个人，而不是一个普通网页 */}
+      <StructuredData data={buildPersonStructuredData()} />
+
       <Reveal>
         <p className="text-brand-600 dark:text-brand-500 font-mono text-sm">about</p>
         <h1 className="mt-3 text-4xl font-bold tracking-tight">关于我</h1>

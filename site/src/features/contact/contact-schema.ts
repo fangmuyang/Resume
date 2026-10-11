@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { enumLabels } from '@/lib/content';
+
 /**
  * 联系表单的校验 schema。
  *
@@ -51,13 +53,19 @@ export const contactFormSchema = z.object({
 
 export type ContactFormValues = z.infer<typeof contactFormSchema>;
 
-/** 主题选项的展示文案。放在 schema 旁边，保证选项与枚举不会脱节 */
-export const CONTACT_TOPIC_OPTIONS: readonly {
-  value: ContactFormValues['topic'];
-  label: string;
-}[] = [
-  { value: 'job', label: '实习 / 工作机会' },
-  { value: 'project', label: '项目合作' },
-  { value: 'feedback', label: '对本站的建议' },
-  { value: 'other', label: '其他' },
-];
+/**
+ * 主题选项。
+ *
+ * `value` 是数据模型里的枚举（稳定、英文），`label` 是界面文案（来自内容）。
+ * 两者分开的好处：改文案不用碰 schema，也不会影响已提交数据的含义。
+ *
+ * 这里通过 `satisfies` 绑定到枚举的联合类型 ——
+ * 如果 schema 新增了一个主题而这里忘了补，类型检查会失败，
+ * 而不是让那个主题在界面上悄悄消失。
+ */
+export const CONTACT_TOPIC_VALUES = ['job', 'project', 'feedback', 'other'] as const;
+
+export const CONTACT_TOPIC_OPTIONS = CONTACT_TOPIC_VALUES.map((value) => ({
+  value,
+  label: enumLabels.contactTopic[value],
+})) satisfies readonly { value: ContactFormValues['topic']; label: string }[];

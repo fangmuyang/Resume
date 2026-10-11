@@ -8,9 +8,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Container } from '@/components/ui/container';
 import { PdfPreview } from '@/features/resume/pdf-preview';
 import { formatFileSize, usePdfPreviewToggle } from '@/features/resume/resume-utils';
-import { profile, resume, resumeAsset, skillGroups } from '@/lib/content';
+import { profile, pageMeta, resume, resumeAsset, skillGroups } from '@/lib/content';
 import { formatPeriod } from '@/lib/format';
 import { resolveAssetUrl } from '@/lib/projects';
+import { Seo } from '@/lib/seo/seo';
 
 /**
  * 简历页：网页版简历 + PDF 预览与下载。
@@ -42,11 +43,13 @@ export default function ResumePage() {
 
   return (
     <Container className="py-16 print:max-w-none print:py-0">
+      <Seo title={pageMeta.resume.title} description={pageMeta.resume.description} path="/resume" />
+
       <Reveal className="print:hidden">
         <p className="text-brand-600 dark:text-brand-500 font-mono text-sm">resume</p>
         <h1 className="mt-3 text-4xl font-bold tracking-tight">简历</h1>
         <p className="mt-4 max-w-prose leading-relaxed text-slate-600 dark:text-slate-400">
-          {resume.headline}
+          {pageMeta.resume.description}
         </p>
       </Reveal>
 
