@@ -22,7 +22,7 @@
  * 与页面结构解耦，也更容易从内容数据生成。
  */
 import { profile } from '@/lib/content';
-import { CANONICAL_ORIGIN, toAbsoluteUrl } from '@/lib/seo/site-config';
+import { SITE_ORIGIN, toAbsoluteUrl } from '@/lib/seo/site-config';
 
 /** 站点级结构化数据：描述"这是一个个人网站" */
 export function buildWebsiteStructuredData(): Record<string, unknown> {
@@ -31,12 +31,12 @@ export function buildWebsiteStructuredData(): Record<string, unknown> {
     '@type': 'WebSite',
     name: profile.seo.siteName,
     description: profile.seo.websiteDescription,
-    url: CANONICAL_ORIGIN,
+    url: SITE_ORIGIN,
     inLanguage: profile.seo.language,
     author: {
       '@type': 'Person',
       name: profile.name,
-      url: CANONICAL_ORIGIN,
+      url: SITE_ORIGIN,
     },
   };
 }
@@ -49,7 +49,7 @@ export function buildPersonStructuredData(): Record<string, unknown> {
     name: profile.name,
     ...(profile.aka === null ? {} : { alternateName: profile.aka }),
     description: profile.bio,
-    url: CANONICAL_ORIGIN,
+    url: SITE_ORIGIN,
     jobTitle: profile.headline,
     // sameAs 声明"这些外部账号是同一个人"。只挑可验证的个人主页，
     // 邮箱与电话不属于这个语义（那是 contactPoint 的范畴）。
@@ -83,7 +83,7 @@ export function buildArticleStructuredData(input: {
     author: {
       '@type': 'Person',
       name: profile.name,
-      url: CANONICAL_ORIGIN,
+      url: SITE_ORIGIN,
     },
   };
 }

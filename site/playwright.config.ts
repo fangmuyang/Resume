@@ -23,7 +23,27 @@ import { defineConfig, devices } from '@playwright/test';
  * 而它是整个部署环节最容易出错的地方。
  */
 const PORT = 4173;
-const BASE_PATH = '/resume/';
+
+/**
+ * E2E 跑在哪个前缀下，由**同一个环境变量**决定（与构建共用）。
+ *
+ * 默认是 GitHub Pages 项目站点的 `/resume/`。
+ * 想验证自定义域名的形态（前缀为 `/`）时：
+ * ```bash
+ * VITE_SITE_URL=https://fangmu.online pnpm build
+ * VITE_SITE_URL=https://fangmu.online pnpm test:e2e
+ * ```
+ *
+ * 让构建与测试读同一个来源很重要：如果测试用 `/resume/` 而产物按 `/` 构建，
+ * 会得到一堆 404，且很容易误判成"代码坏了"而不是"配置不一致"。
+ */
+const BASE_PATH = (() => {
+  const siteUrl = process.env['VITE_SITE_URL'] ?? 'https://fangmuyang.github.io/resume';
+  const withoutProtocol = siteUrl.replace(/^https?:\/\//, '');
+  const firstSlash = withoutProtocol.indexOf('/');
+  const path = firstSlash === -1 ? '' : withoutProtocol.slice(firstSlash).replace(/\/+$/, '');
+  return path === '' ? '/' : `${path}/`;
+})();
 
 /**
  * 用 `localhost` 而不是 `127.0.0.1`。
@@ -36,6 +56,23 @@ const BASE_PATH = '/resume/';
  * `localhost` 会按系统解析顺序同时覆盖两者，所以更稳妥。
  */
 const HOST = 'localhost';
+
+/**
+ * 用哪个浏览器跑 E2E。
+ *
+ * - **本地默认用系统已安装的 Chrome**（`channel: 'chrome'`）：
+ *   开发环境下载不了 Playwright 的浏览器二进制，
+ *   而系统 Chrome 本来就在；顺带的好处是测的正是访客在用的浏览器版本。
+ * - **CI 上用 Playwright 自带的 Chromium**（`E2E_BROWSER=chromium`）：
+ *   workflow 里会执行 `playwright install --with-deps chromium`，
+ *   版本固定、不依赖 runner 镜像里装了什么。
+ *
+ * 两种方式都验证同一批断言，差别只在浏览器来源。
+ */
+const USE_PLAYWRIGHT_CHROMIUM = process.env['E2E_BROWSER'] === 'chromium';
+
+/** 浏览器选项：要么是 channel，要么什么都不传（用自带的 Chromium） */
+const browserOptions = USE_PLAYWRIGHT_CHROMIUM ? {} : { channel: 'chrome' as const };
 
 export default defineConfig({
   testDir: './e2e',
@@ -59,20 +96,7 @@ export default defineConfig({
   projects: [
     {
       name: 'desktop-chromium',
-      /**
-       * 用系统已安装的 Chrome，而不是 Playwright 自带的 Chromium。
-       *
-       * 两个原因：
-       * 1. 本项目的开发环境**下载不了** Playwright 的浏览器二进制
-       *    （受限网络，与 sharp 的问题同类）；
-       * 2. 对个人站点来说，用真实用户的浏览器版本测试更接近实际 ——
-       *    Chrome 的稳定版就是访客在用的那个。
-       *
-       * 需要本机装有 Chrome（macOS / Linux / Windows 都常见）。
-       * CI 上如果没装，改回 `browserName: 'chromium'` 并运行
-       * `pnpm test:e2e:install` 即可。
-       */
-      use: { ...devices['Desktop Chrome'], channel: 'chrome' },
+      use: { ...devices['Desktop Chrome'], ...browserOptions },
     },
     {
       /**
@@ -81,7 +105,7 @@ export default defineConfig({
        * 只改宽度测不到移动端的触摸行为与 UA 相关的分支。
        */
       name: 'mobile-chromium',
-      use: { ...devices['Pixel 7'], channel: 'chrome' },
+      use: { ...devices['Pixel 7'], ...browserOptions },
     },
   ],
 

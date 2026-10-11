@@ -18,17 +18,36 @@
  * 忘了不会报错，只会让那篇文章很久不被收录。
  * 从内容数据生成就不会漏：文章来自 posts-index.json，项目来自 content/projects/。
  */
-import { readFileSync, readdirSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { BASE_PATH, SITE_URL } from '../src/lib/seo/site-config.ts';
+import { BASE_PREFIX, SITE_ORIGIN, toAbsoluteUrl } from '../src/lib/seo/site-config.ts';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const projectRoot = dirname(here);
 const repoRoot = dirname(projectRoot);
+
+/**
+ * 直接写进 `dist/`，而不是 `public/`。
+ *
+ * ## 为什么必须放在构建**之后**
+ *
+ * sitemap 与 robots.txt 里包含**绝对地址**，而站点地址来自
+ * `VITE_SITE_URL`（见 site-config.ts）。
+ *
+ * 如果先把它们生成到 `public/` 再由 Vite 拷贝，就会有一个隐患：
+ * 自定义域名部署时（`VITE_SITE_URL=https://fangmu.online`），
+ * 若 `public/` 里留有上一次用默认域名生成的旧文件，
+ * 它会被原样拷进产物 —— sitemap 指向 `fangmuyang.github.io/resume`，
+ * 而 canonical 指向 `fangmu.online`。这类不一致不会报错，
+ * 只会让搜索引擎收到自相矛盾的信号。
+ *
+ * 改成构建后直接写 `dist/`，就彻底没有"陈旧副本"的空间：
+ * 每次构建都用当前环境变量重新生成。
+ */
 const contentDir = join(projectRoot, 'content');
-const publicDir = join(projectRoot, 'public');
+const distDir = join(projectRoot, 'dist');
 
 interface PostIndexShape {
   posts: { slug: string; date: string; updated: string | null; draft: boolean }[];
@@ -41,11 +60,17 @@ interface SitemapEntry {
   priority: string;
 }
 
-/** 拼成绝对 URL，保证路径之间只有一个斜杠 */
-function toUrl(path: string): string {
-  const trimmed = path === '/' ? '' : path.replace(/^\/+|\/+$/g, '');
-  return `${SITE_URL}${BASE_PATH}${trimmed === '' ? '/' : `/${trimmed}`}`;
-}
+/**
+ * 拼成绝对 URL。
+ *
+ * 直接复用 `toAbsoluteUrl`，而不是在这里再写一遍拼接逻辑。
+ *
+ * 之前这里有一份独立实现，多拼了一次 `BASE_PREFIX`，
+ * 生成出 `…/resume/resume/` 这样的地址 —— 而**构建不会报错**，
+ * 只有真去看 sitemap 内容才会发现。
+ * 同一件事有两份实现，迟早会分叉；共用一份就没有这个空间。
+ */
+const toUrl = toAbsoluteUrl;
 
 /** sitemap 要求 W3C 日期格式（YYYY-MM-DD） */
 function toDateOnly(isoDate: string): string {
@@ -150,7 +175,7 @@ function buildRobots(): string {
     'Allow: /',
     '',
     '# 构建产物不需要被抓取（文件名带 hash，抓了也没有意义）',
-    `Disallow: ${BASE_PATH}/assets/`,
+    `Disallow: ${BASE_PREFIX}assets/`,
     '',
     `Sitemap: ${toUrl('/sitemap.xml')}`,
     '',
@@ -160,15 +185,20 @@ function buildRobots(): string {
 function main(): void {
   const entries = buildEntries();
 
-  const sitemapPath = join(publicDir, 'sitemap.xml');
-  const robotsPath = join(publicDir, 'robots.txt');
+  if (!existsSync(distDir)) {
+    console.error('找不到 dist/。build-seo 必须在 vite build **之后**运行。');
+    process.exit(1);
+  }
+
+  const sitemapPath = join(distDir, 'sitemap.xml');
+  const robotsPath = join(distDir, 'robots.txt');
 
   writeFileSync(sitemapPath, buildSitemap(entries), 'utf8');
   writeFileSync(robotsPath, buildRobots(), 'utf8');
 
   console.log(`已写入 ${relative(repoRoot, sitemapPath)}`);
   console.log(`已写入 ${relative(repoRoot, robotsPath)}`);
-  console.log(`  sitemap 共 ${entries.length} 条 URL`);
+  console.log(`  sitemap 共 ${entries.length} 条 URL，站点地址 ${SITE_ORIGIN}`);
 }
 
 main();

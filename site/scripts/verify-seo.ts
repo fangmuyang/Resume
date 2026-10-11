@@ -12,11 +12,11 @@
  *
  * 这些都是"静默失效"，靠人看是很难发现的，所以用脚本在构建后检查。
  */
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { BASE_PATH, CANONICAL_ORIGIN, SITE_URL } from '../src/lib/seo/site-config.ts';
+import { BASE_PATH, BASE_PREFIX, SITE_ORIGIN } from '../src/lib/seo/site-config.ts';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const projectRoot = dirname(here);
@@ -64,14 +64,14 @@ function checkSitemap(): void {
   }
 
   // 所有 URL 都必须带部署前缀，且是绝对地址
-  const wrongPrefix = locs.filter((loc) => !loc.startsWith(`${SITE_URL}${BASE_PATH}/`));
+  const wrongPrefix = locs.filter((loc) => !loc.startsWith(SITE_ORIGIN));
   if (wrongPrefix.length > 0) {
     fail(`sitemap.xml 里有 ${wrongPrefix.length} 条 URL 的地址前缀不正确：${wrongPrefix[0] ?? ''}`);
   }
 
   // 首页必须被收录
-  if (!locs.some((loc) => loc === `${CANONICAL_ORIGIN}/`)) {
-    fail(`sitemap.xml 缺少首页条目 ${CANONICAL_ORIGIN}/`);
+  if (!locs.some((loc) => loc === `${SITE_ORIGIN}/`)) {
+    fail(`sitemap.xml 缺少首页条目 ${SITE_ORIGIN}/`);
   }
 
   // 内容里的文章与项目都应出现在 sitemap 中
@@ -115,7 +115,7 @@ function checkRobots(): void {
     fail('robots.txt 缺少 Sitemap 声明');
   } else {
     const declared = (sitemapLine[1] as string).trim();
-    const expected = `${CANONICAL_ORIGIN}/sitemap.xml`;
+    const expected = `${SITE_ORIGIN}/sitemap.xml`;
 
     if (!declared.startsWith('http')) {
       fail(`robots.txt 的 Sitemap 必须是绝对地址，当前是 ${declared}`);
@@ -218,7 +218,7 @@ function checkManifest(): void {
     return;
   }
 
-  const expectedScope = `${BASE_PATH}/`;
+  const expectedScope = BASE_PREFIX;
 
   if (manifest.scope !== expectedScope) {
     fail(`manifest 的 scope 与部署路径不一致：${String(manifest.scope)} ≠ ${expectedScope}`);
@@ -268,11 +268,82 @@ function checkServiceWorker(): void {
   if (register === '') return;
 
   // 注册脚本里的路径必须带 base 前缀，否则子路径部署下注册会 404
-  if (!register.includes(BASE_PATH)) {
-    fail(`registerSW.js 里的路径不含部署前缀 ${BASE_PATH}（service worker 会注册失败）`);
+  if (!register.includes(BASE_PATH === '' ? '/' : BASE_PATH)) {
+    fail(`registerSW.js 里的路径不含部署前缀 ${BASE_PREFIX}（service worker 会注册失败）`);
   }
 
   ok('service worker 已生成，注册脚本路径带部署前缀');
+}
+
+/**
+ * 检查"每路由一个 HTML 入口"是否齐备。
+ *
+ * ## 为什么需要这个检查
+ *
+ * 这些入口由 `build-prerender.ts` 生成，是 SPA 部署到静态托管的**必要条件**：
+ * 少了 `about/index.html`，用户刷新 `/resume/about` 就会拿到 404。
+ *
+ * 而这属于"静默失效"：漏生成不会报错，构建照样成功，
+ * 只有真实访客刷新深层页面时才会遇到。所以按内容数据核对一遍。
+ */
+function checkRouteShells(): void {
+  const postsIndex = JSON.parse(readFileSync(join(contentDir, 'posts-index.json'), 'utf8')) as {
+    posts: { slug: string; draft: boolean }[];
+  };
+
+  const projectSlugs = readdirSync(join(contentDir, 'projects'))
+    .filter((name) => name.endsWith('.json'))
+    .map((name) => name.replace(/\.json$/, ''));
+
+  const expected = [
+    'about',
+    'projects',
+    'posts',
+    'resume',
+    'contact',
+    ...projectSlugs.map((slug) => `projects/${slug}`),
+    ...postsIndex.posts.filter((post) => !post.draft).map((post) => `posts/${post.slug}`),
+  ];
+
+  const missing = expected.filter((dir) => !existsSync(join(distDir, dir, 'index.html')));
+
+  if (missing.length > 0) {
+    fail(
+      `缺少 ${String(missing.length)} 个路由入口（刷新这些地址会 404）：\n` +
+        missing.map((dir) => `      ${BASE_PREFIX}${dir}`).join('\n'),
+    );
+    return;
+  }
+
+  // 草稿不该有入口：否则能被直接访问到
+  const draftShells = postsIndex.posts
+    .filter((post) => post.draft)
+    .filter((post) => existsSync(join(distDir, 'posts', post.slug, 'index.html')));
+
+  if (draftShells.length > 0) {
+    fail(`草稿生成了路由入口：${draftShells.map((post) => post.slug).join('、')}`);
+    return;
+  }
+
+  ok(`每路由 HTML 入口齐备（${String(expected.length)} 个），草稿已排除`);
+}
+
+/** 检查 404 兜底页 */
+function check404Fallback(): void {
+  const fallback = join(distDir, '404.html');
+
+  if (!existsSync(fallback)) {
+    fail('缺少 dist/404.html（未枚举的路径会显示托管商的默认 404 页）');
+    return;
+  }
+
+  // 它应当是 SPA 外壳，而不是一张静态的"找不到页面"图片
+  if (!readFileSync(fallback, 'utf8').includes('id="root"')) {
+    fail('dist/404.html 不含应用挂载点，不是 SPA 外壳（前端路由无法接管）');
+    return;
+  }
+
+  ok('404.html 为 SPA 外壳，未枚举的路径也会显示应用内的 404 界面');
 }
 
 function main(): void {
@@ -286,6 +357,8 @@ function main(): void {
   checkIndexHtml();
   checkManifest();
   checkServiceWorker();
+  checkRouteShells();
+  check404Fallback();
 
   console.log(`SEO 与 PWA 产物检查（${relative(repoRoot, distDir)}）\n`);
 

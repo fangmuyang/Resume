@@ -26,6 +26,16 @@ interface ImportMetaEnv {
   readonly VITE_GITHUB_USERNAME?: string;
   /** 可选：提高接口限流额度。**不要**在公开部署时注入 */
   readonly VITE_GITHUB_TOKEN?: string;
+  /**
+   * 站点地址，同时决定资源前缀（Vite 的 `base`）。
+   *
+   * 默认 `https://fangmuyang.github.io/resume`（GitHub Pages 项目站点）。
+   * 部署到自定义域名时设为域名本身，例如 `https://fangmu.online` ——
+   * 此时资源前缀会变成 `/`，因为域名的根就是站点根。
+   *
+   * **这两件事必须同时改变**，所以由一个变量推导而不是两个独立配置项。
+   */
+  readonly VITE_SITE_URL?: string;
 }
 
 interface ImportMeta {

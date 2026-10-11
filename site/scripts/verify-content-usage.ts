@@ -51,12 +51,21 @@ const SOURCE_ROOT = join(projectRoot, 'src');
  * 不参与硬编码检查的路径片段。
  *
  * 每一类都有明确理由，不是"检查报错就加进来"：
+ *
  * - `test/`：测试里的期望值本来就该是字面量，断言依赖具体文案；
  * - `.test.`：同上；
  * - `content/`：构建期专用的 schema 与校验代码，它们的字符串是**字段名与默认值**，
- *   不是展示文案（且不进入浏览器产物）。
+ *   不是展示文案（且不进入浏览器产物）；
+ * - `lib/seo/site-config.ts`：**部署配置**，不是页面内容。
+ *   它含默认站点地址（`https://fangmuyang.github.io/resume`），
+ *   而那个字符串里的用户名只是域名的一部分 ——
+ *   它不会显示给访客，也不需要非开发者去编辑
+ *   （自定义域名走 `VITE_SITE_URL` 环境变量，见 docs/DEPLOYMENT.md）。
+ *
+ *   判断依据：这个守卫防的是"页面文案从内容管道漏到组件里"，
+ *   而部署域名不属于文案。把它算进来只会逼出一个无意义的白名单条目。
  */
-const EXCLUDED_PATH_PARTS = ['/test/', '.test.', '/lib/content/'];
+const EXCLUDED_PATH_PARTS = ['/test/', '.test.', '/lib/content/', '/lib/seo/site-config.ts'];
 
 /** 单词语技术名不算"事实"，不参与检查 */
 const MIN_LENGTH_SINGLE_WORD = 8;

@@ -46,6 +46,63 @@ test.describe('路由可达性', () => {
     await expect(page.getByRole('link', { name: '回到首页' })).toBeVisible();
   });
 
+  test('深层路由返回 200（每路由都有 HTML 入口）', async ({ page }) => {
+    /**
+     * 这条用例验证 `build-prerender.ts` 的产出。
+     *
+     * 没有那些 `about/index.html` 之类的文件时，静态服务器找不到对应资源，
+     * 会走 404 兜底 —— 页面**看起来还是对的**（SPA 外壳加载后前端路由接管），
+     * 但 HTTP 状态码是 404。对搜索引擎与分享抓取器来说，
+     * 404 与 200 的意义完全不同。
+     *
+     * 所以这里断言的是**状态码**，而不是页面内容 ——
+     * 只看内容的话，这两种情况无法区分。
+     */
+    const deepRoutes = [
+      'about',
+      'projects',
+      'posts',
+      'resume',
+      'contact',
+      'projects/elderly-care-platform',
+      'posts/build-time-validation-in-vite',
+    ];
+
+    for (const route of deepRoutes) {
+      const response = await page.goto(route);
+      expect(response?.status(), `/${route} 应返回 200，实际 ${String(response?.status())}`).toBe(
+        200,
+      );
+      await expect(mainHeading(page)).toBeVisible();
+    }
+  });
+
+  test('未枚举的路径也能显示应用内的 404 界面', async ({ page }) => {
+    /**
+     * 拼错的地址不在 pre-render 的枚举范围内，
+     * 在 GitHub Pages 上会由 `404.html` 兜底。
+     *
+     * ## 为什么这里**不**断言状态码
+     *
+     * 第一版断言 `response.status() === 404`，结果本地跑出来是 200 ——
+     * 因为 `vite preview` 默认带 history-fallback，对任何未命中文件的路径
+     * 都返回根部的 `index.html`。而 GitHub Pages 会返回 404。
+     *
+     * 也就是说**状态码取决于托管实现**，不是本项目能控制的：
+     * - GitHub Pages：未枚举路径 → 404.html + HTTP 404（静态托管的限制，没有服务端重写）
+     * - vite preview：未枚举路径 → index.html + HTTP 200（自带的 SPA 回退）
+     *
+     * 对这两者都成立的、也真正重要的断言是：**应用能接管并显示自己的 404 界面**，
+     * 而不是白屏或托管商的默认页。所以这里只断言这一点。
+     *
+     * 状态码的差异写在 `docs/DEPLOYMENT.md` 里，避免读者以为线上也是 200。
+     */
+    await page.goto('this-page-was-never-generated');
+
+    await expect(page.getByText('页面不存在')).toBeVisible();
+    await expect(page.getByRole('link', { name: '回到首页' })).toBeVisible();
+  });
+
   test('未知项目 slug 显示错误页', async ({ page }) => {
     // loader 抛 404 Response，应由根路由的错误边界渲染，
     // 且**显示 loader 放在 body 里的那句具体消息**，而不是 "404 Not Found"

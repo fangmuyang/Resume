@@ -1,7 +1,0 @@
-User-agent: *
-Allow: /
-
-# 构建产物不需要被抓取（文件名带 hash，抓了也没有意义）
-Disallow: /resume/assets/
-
-Sitemap: https://fangmuyang.github.io/resume/sitemap.xml

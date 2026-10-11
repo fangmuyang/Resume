@@ -12,7 +12,7 @@ import { defineConfig, type Plugin } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
 import { rehypeShikiVariablesToDataAttributes } from './src/lib/rehype-shiki-data-attributes.ts';
-import { REPO_NAME } from './src/lib/seo/site-config.ts';
+import { BASE_PREFIX } from './src/lib/seo/site-config.ts';
 
 /**
  * MDX 配置。
@@ -146,7 +146,7 @@ function contentGuard(): Plugin {
  * classic "blank page + 404 on every asset" symptom.
  * Local dev is happier at '/', hence the split by command.
  *
- * REPO_NAME is imported from src/lib/seo/site-config.ts so that canonical
+ * BASE_PREFIX is imported from src/lib/seo/site-config.ts so that canonical
  * links, the sitemap and the PWA manifest cannot drift out of sync with base.
  */
 
@@ -246,8 +246,8 @@ function pwaPlugin(): Plugin[] {
       description: seo.description,
       lang: seo.language,
       dir: seo.direction,
-      start_url: `/${REPO_NAME}/`,
-      scope: `/${REPO_NAME}/`,
+      start_url: BASE_PREFIX,
+      scope: BASE_PREFIX,
       display: 'standalone',
       orientation: 'portrait-primary',
       theme_color: seo.themeColor,
@@ -277,9 +277,13 @@ function pwaPlugin(): Plugin[] {
       cleanupOutdatedCaches: true,
 
       // 深层路由回退到 index.html，让前端路由接管
-      navigateFallback: `/${REPO_NAME}/index.html`,
+      navigateFallback: `${BASE_PREFIX}index.html`,
       // 静态资源与 robots/sitemap 不该被当作导航请求处理
-      navigateFallbackDenylist: [/^\/resume\/assets\//, /robots\.txt$/, /sitemap\.xml$/],
+      navigateFallbackDenylist: [
+        new RegExp(`^${BASE_PREFIX}assets/`),
+        /robots\.txt$/,
+        /sitemap\.xml$/,
+      ],
 
       runtimeCaching: [
         {
@@ -347,7 +351,7 @@ function pwaPlugin(): Plugin[] {
 }
 
 export default defineConfig(({ command }) => ({
-  base: command === 'build' ? `/${REPO_NAME}/` : '/',
+  base: command === 'build' ? BASE_PREFIX : '/',
 
   plugins: [mdxPlugin(), react(), tailwindcss(), contentGuard(), ...pwaPlugin()],
 

@@ -2,10 +2,20 @@
  * 产物级验证：在没有浏览器的环境下，检查构建结果是否满足关键约束。
  *
  * 覆盖四件事，任何一项失败都会导致线上出问题，但在 dev 模式下不会暴露：
- * 1. index.html 的资源配置带 /resume/ 前缀（GitHub Pages 子路径）；
- * 2. 路由 basename 被编译成 /resume（开发时是 /，很容易漏改）；
- * 3. 懒加载 chunk 之间的相对导入能正确解析到 /resume/assets/；
+ * 1. index.html 的资源引用的前缀与 `base` 一致；
+ * 2. 路由 basename 被编译成同一个前缀（开发时是 `/`，很容易漏改）；
+ * 3. 懒加载 chunk 之间的相对导入能正确解析；
  * 4. 每个路由都有独立的 chunk（说明代码分割真的生效）。
+ *
+ * ## base 从产物自身推导，而不是写死
+ *
+ * 原实现里写死了 `const REPO_NAME = 'resume'` —— 这是同一份部署事实的**第三处**副本
+ * （另两处是 `site-config.ts` 与 vite 配置）。而阶段 11 起 base 变成可配置的：
+ * 自定义域名部署时前缀必须是 `/`，写死的脚本会立刻误报。
+ *
+ * 现在改成从 `index.html` 里**反推**实际使用的前缀：
+ * 产物自己就是唯一真相，脚本只检查"内部是否自洽"。
+ * 这样无论部署在 `/`、`/resume/` 还是别的子路径下，这套检查都成立。
  */
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
@@ -13,7 +23,6 @@ import { join } from 'node:path';
 const distDir = join(import.meta.dirname, '..', 'dist');
 const assetsDir = join(distDir, 'assets');
 
-const REPO_NAME = 'resume';
 const failures: string[] = [];
 
 function check(label: string, passed: boolean, detail: string): void {
@@ -23,22 +32,32 @@ function check(label: string, passed: boolean, detail: string): void {
 
 const html = readFileSync(join(distDir, 'index.html'), 'utf8');
 
+/**
+ * 反推 base：取入口 script 的 src，去掉 `assets/...` 部分。
+ *
+ * 例如 `src="/resume/assets/index-abc.js"` → base = `/resume/`；
+ * `src="/assets/index-abc.js"` → base = `/`。
+ */
+const entryMatch = /src="([^"]*?)assets\/(index-[^"]+\.js)"/.exec(html);
+const derivedBase = entryMatch?.[1] ?? '';
+const entryName = entryMatch?.[2];
+
 check(
-  'index.html 资源配置带 /resume/ 前缀',
-  html.includes(`/${REPO_NAME}/assets/`),
-  'GitHub Pages 子路径部署的前提',
+  'index.html 的资源引用带统一前缀',
+  entryMatch !== null,
+  entryMatch === null ? '无法从 index.html 解析出入口脚本' : `前缀 "${derivedBase}"`,
 );
 
 check('index.html 含主题引导脚本', html.includes('prefers-color-scheme'), '否则首屏会闪白 (FOUC)');
 
-// 主入口 chunk 里应当能找到 basename 字面量
-const entryName = /src="\/resume\/assets\/(index-[^"]+\.js)"/.exec(html)?.[1];
+// 主入口 chunk 里应当能找到 basename 字面量（值等于去掉尾部斜杠的 base）
+const routerBasename = derivedBase.replace(/\/+$/, '');
 const entrySource = entryName === undefined ? '' : readFileSync(join(assetsDir, entryName), 'utf8');
 
 check(
-  '路由 basename 编译为 /resume',
-  entrySource.includes(`"${REPO_NAME}"`) || entrySource.includes(`'/${REPO_NAME}'`),
-  `入口 chunk: ${entryName ?? '未找到'}`,
+  '路由 basename 与 base 一致',
+  entrySource.includes(`"${routerBasename}"`) || entrySource.includes(`'${routerBasename}'`),
+  `期望 "${routerBasename}"，入口 chunk: ${entryName ?? '未找到'}`,
 );
 
 const jsFiles = readdirSync(assetsDir).filter((name) => name.endsWith('.js'));
@@ -96,7 +115,7 @@ check(
         (duplicated.length > 0 ? `，重复分块：${duplicated.join(', ')}` : ''),
 );
 
-// 懒加载 chunk 里的相对导入必须指回 /resume/assets/
+// 懒加载 chunk 里的相对导入必须指回同前缀下的 assets/
 // 注意 (match[1] ?? '')：开启 noUncheckedIndexedAccess 后，捕获组类型是 string | undefined
 const routeChunkFiles = jsFiles.filter((name) =>
   routeModuleNames.some((moduleName) => name.startsWith(`${moduleName}-`)),
