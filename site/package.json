@@ -14,6 +14,7 @@
     "verify:build": "tsx scripts/verify-build.ts",
     "verify:content": "tsx scripts/verify-content-usage.ts",
     "verify:privacy": "tsx scripts/verify-privacy.ts",
+    "verify:search": "tsx scripts/verify-search-index.ts",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "lint": "eslint . --max-warnings 0",
@@ -24,16 +25,19 @@
     "build:posts-index": "tsx scripts/build-posts-index.ts",
     "build:content": "tsx scripts/extract-pdf.ts && tsx scripts/build-posts-index.ts && tsx scripts/build-public-content.ts",
     "validate": "tsx scripts/validate-content.ts",
-    "check": "tsx scripts/validate-content.ts && tsx scripts/verify-content-usage.ts && tsc --noEmit && eslint . --max-warnings 0 && prettier --check ."
+    "check": "tsx scripts/validate-content.ts && tsx scripts/verify-content-usage.ts && tsx scripts/verify-search-index.ts && tsc --noEmit && eslint . --max-warnings 0 && prettier --check ."
   },
   "dependencies": {
+    "@hookform/resolvers": "5.9.1",
     "class-variance-authority": "0.7.1",
     "clsx": "2.1.1",
+    "fuse.js": "7.5.0",
     "lucide-react": "1.54.0",
     "motion": "14.1.0",
     "pdfjs-dist": "6.4.299",
     "react": "19.3.0",
     "react-dom": "19.3.0",
+    "react-hook-form": "7.89.0",
     "react-router": "7.18.4",
     "tailwind-merge": "3.7.0",
     "zustand": "5.0.15"

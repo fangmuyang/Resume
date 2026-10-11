@@ -1,7 +1,8 @@
-import { Menu, X } from 'lucide-react';
+import { Menu, Search, X } from 'lucide-react';
 import { useState } from 'react';
 import { Link, NavLink, useLocation } from 'react-router';
 
+import { SEARCH_SHORTCUT_LABEL, useSearchStore } from '@/features/search/search-store';
 import { ThemeToggle } from '@/features/theme/theme-toggle';
 import { NAV_ITEMS } from '@/lib/navigation';
 import { cn } from '@/lib/utils';
@@ -72,6 +73,7 @@ export function MobileNav({ className }: { className?: string }) {
 
 export function Header() {
   const location = useLocation();
+  const openSearch = useSearchStore((state) => state.open);
 
   return (
     <header className="sticky top-0 z-50 border-b border-slate-200 bg-white/80 backdrop-blur-md dark:border-slate-800 dark:bg-slate-950/80">
@@ -104,6 +106,16 @@ export function Header() {
         </nav>
 
         <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={openSearch}
+            aria-label="站内搜索"
+            title={`站内搜索（${SEARCH_SHORTCUT_LABEL}）`}
+            className="inline-flex size-9 items-center justify-center rounded-md border border-slate-200 text-slate-600 transition-colors hover:bg-slate-100 dark:border-slate-800 dark:text-slate-400 dark:hover:bg-slate-800"
+          >
+            <Search className="size-4" />
+          </button>
+
           <ThemeToggle />
           {/* key 让路由变化时抽屉状态自动重置，见本文件顶部说明 */}
           <MobileNav key={location.pathname} className="md:hidden" />

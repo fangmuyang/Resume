@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 import { PageTransition } from '@/app/page-transition';
 import { Footer } from '@/components/layout/footer';
 import { Header } from '@/components/layout/header';
+import { SearchLauncher } from '@/features/search/search-launcher';
 import { subscribeToSystemTheme } from '@/features/theme/theme-store';
 
 /**
@@ -25,6 +26,9 @@ export default function RootLayout() {
       </main>
 
       <Footer />
+
+      {/* 搜索面板：懒加载，未唤起时不下载任何代码 */}
+      <SearchLauncher />
     </div>
   );
 }
