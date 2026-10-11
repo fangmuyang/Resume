@@ -8,6 +8,7 @@
 
 - 站点地址：https://fangmuyang.github.io/resume/
 - 内容来源：`MyResume.pdf`
+- **技术学习文档：[`docs/LEARNING.md`](docs/LEARNING.md)** —— 9 章，讲清每层为什么这么写
 - 阶段路线图：[`docs/ROADMAP.md`](docs/ROADMAP.md)
 - 部署与自定义域名：[`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)
 
