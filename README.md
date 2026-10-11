@@ -11,22 +11,23 @@
 
 ## 技术栈
 
-| 层次 | 选型                             | 在本项目中的作用                              |
-| ---- | -------------------------------- | --------------------------------------------- |
-| 核心 | React 19 · TypeScript 5.9        | 组件与类型系统                                |
-| 构建 | Vite 7                           | 开发服务器、生产构建与 vendor 分包            |
-| 路由 | React Router 7（数据路由）       | 九个路由、懒加载、路由级错误边界、loader 预取 |
-| 状态 | Zustand 5                        | 主题状态（暗黑模式）                          |
-| 动画 | Motion（Framer Motion）          | 路由切换过渡，尊重 prefers-reduced-motion     |
-| 样式 | Tailwind CSS v4 · cva · clsx     | 设计令牌、变体与类名合并                      |
-| 图标 | lucide-react                     | 图标（按需 tree-shaking）                     |
-| 内容 | Zod 4（仅构建期）· pdfjs-dist    | 内容校验与 PDF 提取，均不进入浏览器产物       |
-| 文章 | MDX 3 · rehype-pretty-code       | Markdown 里嵌入 React 组件，双主题代码高亮    |
-| 搜索 | Fuse.js 7                        | 项目/文章/技能统一索引，懒加载面板            |
-| 表单 | React Hook Form 7 · Zod 4        | 联系表单的校验与状态机                        |
-| 数据 | TanStack Query 5 · MSW 2         | GitHub API 的缓存与重试；测试中在网络层 mock  |
-| 质量 | ESLint 9 · Prettier 3            | 静态检查与格式化                              |
-| 提交 | Husky · lint-staged · commitlint | 本地提交卡口 + 提交信息规范                   |
+| 层次 | 选型                             | 在本项目中的作用                                 |
+| ---- | -------------------------------- | ------------------------------------------------ |
+| 核心 | React 19 · TypeScript 5.9        | 组件与类型系统                                   |
+| 构建 | Vite 7                           | 开发服务器、生产构建与 vendor 分包               |
+| 路由 | React Router 7（数据路由）       | 九个路由、懒加载、路由级错误边界、loader 预取    |
+| 状态 | Zustand 5                        | 主题状态（暗黑模式）                             |
+| 动画 | Motion（Framer Motion）          | 路由切换过渡，尊重 prefers-reduced-motion        |
+| 样式 | Tailwind CSS v4 · cva · clsx     | 设计令牌、变体与类名合并                         |
+| 图标 | lucide-react                     | 图标（按需 tree-shaking）                        |
+| 内容 | Zod 4（仅构建期）· pdfjs-dist    | 内容校验与 PDF 提取，均不进入浏览器产物          |
+| 文章 | MDX 3 · rehype-pretty-code       | Markdown 里嵌入 React 组件，双主题代码高亮       |
+| 搜索 | Fuse.js 7                        | 项目/文章/技能统一索引，懒加载面板               |
+| 表单 | React Hook Form 7 · Zod 4        | 联系表单的校验与状态机                           |
+| 数据 | TanStack Query 5 · MSW 2         | GitHub API 的缓存与重试；测试中在网络层 mock     |
+| 测试 | Vitest 3 · RTL · Playwright      | 单测与组件测试 91 个用例；E2E 覆盖真实浏览器行为 |
+| 质量 | ESLint 9 · Prettier 3            | 静态检查与格式化                                 |
+| 提交 | Husky · lint-staged · commitlint | 本地提交卡口 + 提交信息规范                      |
 
 后续阶段会依次加入 Vitest、React Testing Library、Playwright、PWA
 与 GitHub Actions，详见路线图。
@@ -103,6 +104,9 @@ pnpm verify:content  # 检查页面是否有硬编码文案（应全部来自 co
 pnpm verify:build    # 检查产物：base 前缀、basename、分块、防 FOUC 脚本
 pnpm verify:privacy  # 扫描产物，确认私密字段（手机号）没有泄漏
 pnpm verify:search   # 检查搜索索引覆盖与跳转目标是否有效
+pnpm test            # 单元与组件测试（Vitest，91 个用例）
+pnpm test:coverage   # 带覆盖率（阈值 85%）
+pnpm test:e2e        # E2E（需先执行 pnpm --dir site run test:e2e:install）
 pnpm typecheck       # 仅类型检查
 pnpm lint            # ESLint
 pnpm format          # Prettier 写入格式化

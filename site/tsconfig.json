@@ -38,5 +38,11 @@
       "@/*": ["./src/*"]
     }
   },
-  "include": ["src", "vite.config.ts", "scripts"]
+  /**
+   * e2e/ 由 Playwright 自己转译与执行，不参与生产的类型检查：
+   * 它依赖 @playwright/test 的类型，而那份依赖只在本地装了浏览器后才可用。
+   * 放进 include 会让 `pnpm typecheck` 在没有 Playwright 的环境下直接失败。
+   */
+  "include": ["src", "vite.config.ts", "vitest.config.ts", "scripts"],
+  "exclude": ["e2e"]
 }
