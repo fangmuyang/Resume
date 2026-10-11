@@ -14,8 +14,12 @@ confirmModulesPurge: false
 
 # pnpm 11 blocks dependency install scripts (postinstall) by default.
 # esbuild needs its install script to place the platform binary, so allow it.
+# sharp is the native image library behind @vite-pwa/assets-generator; without
+# its install script the prebuilt binary is missing and icon generation fails
+# with "Could not load the sharp module using the win32-x64 runtime".
 allowBuilds:
   esbuild: true
+  sharp: true
 
 # pnpm 11 supply-chain protection: newly published versions are not adopted
 # during an observation window. These are deliberate, exact-version exceptions
