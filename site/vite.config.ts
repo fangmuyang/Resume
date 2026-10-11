@@ -100,5 +100,32 @@ export default defineConfig(({ command }) => ({
   build: {
     sourcemap: false,
     chunkSizeWarningLimit: 700,
+
+    rollupOptions: {
+      output: {
+        /**
+         * Split third-party code into stable, separately cacheable chunks.
+         *
+         * Two reasons:
+         * 1. Diagnosis — a single 490 KB chunk tells you nothing about where the
+         *    bytes went. Split vendor chunks make each library's cost visible.
+         * 2. Caching — when only app code changes, browsers keep the vendor chunks
+         *    and re-download just the small app chunk.
+         *
+         * Note: manualChunks is a blunt instrument. It does not tree-shake anything,
+         * it only relocates modules between output files. Real size reductions come
+         * from not importing the code in the first place.
+         */
+        manualChunks: {
+          // Must list every entry point, not just the package name.
+          // 'react' alone leaves 'react-dom/client' and 'react/jsx-runtime'
+          // out of the rule, and they silently land in the main chunk instead.
+          'vendor-react': ['react', 'react-dom', 'react-dom/client', 'react/jsx-runtime'],
+          'vendor-router': ['react-router'],
+          'vendor-motion': ['motion'],
+          'vendor-state': ['zustand'],
+        },
+      },
+    },
   },
 }));

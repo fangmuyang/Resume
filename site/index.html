@@ -1,10 +1,36 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="zh-CN" class="scroll-smooth">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="方睿杰的个人网站：前端开发、项目作品与技术笔记" />
+    <meta name="color-scheme" content="light dark" />
     <title>方睿杰 · 个人网站</title>
+
+    <!--
+      首屏主题引导脚本。必须是阻塞式（不能 defer / async / type=module），
+      否则浏览器会先用默认样式绘制一帧白色，随后 React 才加上 .dark —— 这就是 FOUC。
+
+      逻辑与 src/features/theme/theme-store.ts 中的 THEME_INIT_SCRIPT 保持一致：
+      读取 localStorage 的用户选择，没有则跟随系统偏好，然后把 .dark 类写到 <html> 上。
+
+      这段代码刻意写成 ES5 风格并包在 try/catch 里：
+      主题引导不能因为任何异常而阻塞整页渲染。
+    -->
+    <script>
+      (function () {
+        try {
+          var key = 'resume-site-theme';
+          var stored = localStorage.getItem(key);
+          var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+          var isDark =
+            stored === 'dark' || ((stored === null || stored === 'system') && prefersDark);
+          document.documentElement.classList.toggle('dark', isDark);
+        } catch (e) {
+          /* 主题引导失败时保持浅色，不影响页面可用性 */
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
