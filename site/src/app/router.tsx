@@ -2,6 +2,7 @@ import { createBrowserRouter, type RouteObject } from 'react-router';
 
 import RootLayout from '@/app/root-layout';
 import RouteErrorBoundary from '@/app/route-error-boundary';
+import { projectDetailLoader } from '@/features/projects/project-detail-loader';
 
 /**
  * 路由表。
@@ -48,6 +49,22 @@ export const routes: RouteObject[] = [
         path: 'projects',
         lazy: async () => {
           const { default: Component } = await import('@/pages/projects');
+          return { Component };
+        },
+      },
+      {
+        /**
+         * 详情页带 loader：数据在渲染前就绪，组件里不需要处理"可能没有项目"的分支。
+         * 找不到 slug 时 loader 抛 404 Response，由根路由的错误边界渲染成错误页。
+         *
+         * loader 用**静态导入**（文件顶部）而不是在 loader 内部 await import：
+         * 后者会让 Vite 把 loader 单独拆成一个 chunk，同一个路由因此出现两个产物文件；
+         * 而且 loader 必须在渲染前可用，动态加载它只会推迟首屏。
+         */
+        path: 'projects/:slug',
+        loader: projectDetailLoader,
+        lazy: async () => {
+          const { default: Component } = await import('@/pages/project-detail');
           return { Component };
         },
       },

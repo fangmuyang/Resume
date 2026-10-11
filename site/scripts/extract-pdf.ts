@@ -551,13 +551,26 @@ async function main(): Promise<void> {
   // 它们已经写在 resume.json 里，重复维护必然漂移。
   mkdirSync(projectsDir, { recursive: true });
 
-  const projectTemplates = [
+  /**
+   * 显式声明模板类型，而不是靠 `as const` 推导。
+   * `as const` 会让只有第一个元素有 listIntro，循环里就访问不到 ——
+   * 这里用可选属性表达"只有一个项目需要写列表页引导语"。
+   */
+  const projectTemplates: {
+    slug: string;
+    status: 'active' | 'completed' | 'archived';
+    featured: boolean;
+    order: number;
+    tags: string[];
+    listIntro?: string;
+  }[] = [
     {
       slug: 'elderly-care-platform',
       status: 'completed',
       featured: true,
       order: 1,
       tags: ['智慧养老', '移动端'],
+      listIntro: '从课程项目到正在迭代的个人站点，覆盖移动端、AI 应用与数据可视化方向。',
     },
     {
       slug: 'rope-net-qa',
@@ -580,7 +593,7 @@ async function main(): Promise<void> {
       order: 4,
       tags: ['部署运维'],
     },
-  ] as const;
+  ];
 
   let created = 0;
 
@@ -606,6 +619,7 @@ async function main(): Promise<void> {
       slug: template.slug,
       name: facts.name,
       summary: TODO('一句话简介，用于作品集卡片'),
+      listIntro: template.listIntro ?? null,
       role: facts.role,
       period: facts.period,
       status: template.status,

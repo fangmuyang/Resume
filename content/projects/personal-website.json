@@ -2,6 +2,7 @@
   "slug": "personal-website",
   "name": "Fangmu.online 个人网页",
   "summary": "TODO:一句话简介，用于作品集卡片",
+  "listIntro": null,
   "role": "核心开发者",
   "period": {
     "start": "2025-02-01",

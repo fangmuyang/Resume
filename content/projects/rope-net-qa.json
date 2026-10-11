@@ -2,6 +2,7 @@
   "slug": "rope-net-qa",
   "name": "绳网问答",
   "summary": "TODO:一句话简介，用于作品集卡片",
+  "listIntro": null,
   "role": "核心开发者",
   "period": {
     "start": "2024-06-01",

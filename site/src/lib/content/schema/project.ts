@@ -28,6 +28,13 @@ export const projectSchema = z.object({
   name: z.string().min(1),
   /** 一句话简介，用于卡片 */
   summary: z.string().min(1),
+  /**
+   * 作品集**列表页**的引导语。
+   * 只允许在一个项目上设置（通常是第一个），列表页取到它作为页面描述。
+   * 放在内容里而不是写死在页面组件中：页面文案必须来自 content/，
+   * 这条约定由 pnpm verify:content 强制检查。
+   */
+  listIntro: z.string().min(1).nullable().default(null),
   role: z.string().min(1),
   period: dateRangeSchema,
   status: projectStatusSchema,
