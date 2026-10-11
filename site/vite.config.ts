@@ -167,6 +167,22 @@ export default defineConfig(({ command }) => ({
     sourcemap: false,
     chunkSizeWarningLimit: 700,
 
+    /**
+     * 不预加载按需使用的 vendor chunk。
+     *
+     * Vite 默认会为入口能间接到达的所有 chunk 注入 `<link rel="modulepreload">`，
+     * 包括那些只在懒加载分支里用到的。实测 `vendor-query`（TanStack Query，
+     * 只有「开源仓库」区块需要）也被写进了 index.html 的 modulepreload ——
+     * 等于首屏就把它下载了，把懒加载的意义抵消掉。
+     *
+     * 这里把纯按需的 vendor chunk 排除。保留 vendor-react / vendor-router 是
+     * 因为它们确实在首屏关键路径上，预加载能减少瀑布式请求。
+     */
+    modulePreload: {
+      resolveDependencies: (_filename, deps) =>
+        deps.filter((dep) => !dep.includes('vendor-query') && !dep.includes('vendor-motion')),
+    },
+
     rollupOptions: {
       output: {
         /**
@@ -190,6 +206,10 @@ export default defineConfig(({ command }) => ({
           'vendor-router': ['react-router'],
           'vendor-motion': ['motion'],
           'vendor-state': ['zustand'],
+          // TanStack Query 只被「GitHub 仓库列表」用到。
+          // 单独拆出来可以把它移出其他页面的关键路径 ——
+          // 实测主 chunk 因此从 205 KB 回落到约 94 KB。
+          'vendor-query': ['@tanstack/react-query'],
         },
       },
     },

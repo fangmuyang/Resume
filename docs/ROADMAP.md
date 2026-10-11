@@ -2,11 +2,62 @@
 
 > 个人网站学习项目 · React 19 + TypeScript + Vite
 > 内容来源：`MyResume.pdf`（1 页中文简历，Chromium/Skia 打印导出）
-> 状态：**阶段 0–7 已完成并验证**，等待补充素材后进入阶段 8
+> 状态：**阶段 0–8 已完成并验证**，等待补充素材后进入阶段 9
 
 ---
 
 ## 0. 阶段完成记录
+
+### 阶段 8 · GitHub API + TanStack Query + MSW（已完成）
+
+| 项目 | 结果 |
+| --- | --- |
+| 数据源 | GitHub REST API 拉取公开仓库，展示在项目页的「开源仓库」区块 |
+| 错误分类 | 判别联合：`not-found` / `rate-limited` / `network` / `invalid-response`，各自给出可操作提示 |
+| 限流处理 | 读取 `x-ratelimit-*` 响应头，额度低于 10 次时预警，耗尽时给出重置时间 |
+| 重试策略 | 按错误类型决定：404 与限流不重试，网络类指数退避重试 2 次 |
+| MSW | handlers 覆盖成功、404、限流、结构异常四种响应 |
+| 加载体验 | 骨架屏（尺寸与真实卡片一致，避免布局跳动） |
+| 验证结果 | validate ✓ verify:content ✓ verify:search ✓ verify:privacy ✓ typecheck ✓ lint ✓ format ✓ check ✓ build ✓ verify:build ✓ |
+
+**阶段 8 解决的问题与踩坑记录**
+
+1. **`QueryClientProvider` 放在应用根部会让整个 Query 库进主包。**
+   实测主 chunk 从 91 KB 涨到 205 KB，而全站只有一个区块用到它。
+   把 Provider 移进「开源仓库」区块自己的懒加载边界后，主包回落到 **91 KB**。
+   代价是这段边界必须自包含 —— 一旦别的页面也用 Query，优化立刻失效。
+
+2. **Vite 会为入口间接可达的 chunk 注入 `modulepreload`。**
+   即使 `vendor-query` 只在懒加载分支里用，它仍被写进 index.html 的
+   modulepreload，等于首屏就下载 —— 把懒加载的意义抵消掉。
+   用 `build.modulePreload.resolveDependencies` 过滤掉纯按需的 vendor chunk。
+   实测首屏预加载从 5 个减到 3 个（router / react / state）。
+
+3. **把 Zod 用在 GitHub 客户端是得不偿失的。**
+   项目约定"Zod 只在构建期使用"，但我一开始给 GitHub 响应也写了 Zod schema。
+   结果 Zod 被打成 **85 KB 的独立 chunk（gzip 24.5 KB）**，
+   而它换来的只是"少写十几行"—— 响应结构是静态且简单的，
+   手写类型守卫完全够用。改成手写守卫后该 chunk 消失。
+   **判断依据不是"Zod 好不好"，而是这笔依赖换来了什么。**
+   内容管道的 schema 复杂（默认值、refine、跨字段约束、类型推导），那里用 Zod 值得。
+   联系表单保留 Zod 是另一个正当例外：静态站没有后端，客户端校验是必须的。
+
+4. **`lucide-react` v1 移除了全部品牌图标。** `Github` 不再导出，
+   通用图标库本来就只该提供语义图标。改用 `FolderGit2`。
+
+5. **`fetch` 的 `signal` 类型是 `AbortSignal | null`，不含 `undefined`。**
+   `exactOptionalPropertyTypes` 下必须显式 `signal ?? null` ——
+   "可以缺失"和"可以是 undefined"在类型上是两件事。
+
+6. **`verify:content` 抓到一处新增的硬编码。** GitHub 用户名同时出现在
+   内容文件与 Header 的品牌标识里。把品牌标识拆成 `brandMark.prefix/suffix`
+   放进内容，组件只读字段。
+
+7. **静态站直连第三方 API 的固有限制必须承认。**
+   未认证的 GitHub API 是 60 次/小时且**按 IP 计** ——
+   同一 Wi-Fi 下的人会共用额度。所以设计的重点不是"怎么显示成功"，
+   而是"失败时用户看到什么"：明确告知原因与恢复时间，
+   而不是静默显示空列表（那会让人以为是 bug）。
 
 ### 阶段 7 · 站内搜索 + 联系表单（已完成）
 
@@ -396,7 +447,7 @@ Zustand(theme/search/tag) ──────────────▶  React R
 | **5**  | 文章/笔记（MDX）                | MDX、代码高亮、构建期内容收集                                             | MDX 内可嵌入 React 组件并正常渲染                                     | ✅ 完成 |
 | **6**  | 简历页 + PDF 预览/下载          | pdfjs-dist 前端预览、文件下载                                             | PDF 可预览可下载；**手机号不在网页正文出现**                          | ✅ 完成 |
 | **7**  | 搜索 + 联系表单                 | Fuse.js、React Hook Form + Zod                                            | 搜索命中项目/文章/技能；表单非法输入有提示                            | ✅ 完成 |
-| **8**  | GitHub API + Query + MSW        | TanStack Query、MSW                                                       | 动态仓库列表有 loading/error 态；测试中网络被 mock                    | ⬜      |
+| **8**  | GitHub API + Query + MSW        | TanStack Query、MSW                                                       | 动态仓库列表有 loading/error 态；测试中网络被 mock                    | ✅ 完成      |
 | **9**  | 测试体系 + E2E                  | Vitest、RTL、Playwright、覆盖率                                           | 单测与 E2E 全绿                                                       | ⬜      |
 | **10** | SEO + PWA + 可访问性 + 性能     | React 19 metadata、vite-plugin-pwa、a11y、Lighthouse                      | Lighthouse 四维 ≥ 90；可安装为 PWA                                    | ⬜      |
 | **11** | CI/CD + 部署 + 自定义域名       | GitHub Actions、GitHub Pages、404.html 回退                               | push 后自动部署成功；子路径刷新不 404                                 | ⬜      |

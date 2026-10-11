@@ -22,11 +22,14 @@
 | 图标 | lucide-react                     | 图标（按需 tree-shaking）                     |
 | 内容 | Zod 4（仅构建期）· pdfjs-dist    | 内容校验与 PDF 提取，均不进入浏览器产物       |
 | 文章 | MDX 3 · rehype-pretty-code       | Markdown 里嵌入 React 组件，双主题代码高亮    |
+| 搜索 | Fuse.js 7                        | 项目/文章/技能统一索引，懒加载面板            |
+| 表单 | React Hook Form 7 · Zod 4        | 联系表单的校验与状态机                        |
+| 数据 | TanStack Query 5 · MSW 2         | GitHub API 的缓存与重试；测试中在网络层 mock  |
 | 质量 | ESLint 9 · Prettier 3            | 静态检查与格式化                              |
 | 提交 | Husky · lint-staged · commitlint | 本地提交卡口 + 提交信息规范                   |
 
-后续阶段会依次加入 TanStack Query、Fuse.js、React Hook Form、MSW、
-Vitest、Playwright、PWA 与 GitHub Actions，详见路线图。
+后续阶段会依次加入 Vitest、React Testing Library、Playwright、PWA
+与 GitHub Actions，详见路线图。
 
 ## 目录结构
 

@@ -1,10 +1,11 @@
 import { Reveal, RevealItem, RevealList } from '@/components/motion/reveal';
 import { Button } from '@/components/ui/button';
 import { Container } from '@/components/ui/container';
+import { LazyGithubRepositories } from '@/features/github/lazy-github-repositories';
 import { ProjectCard } from '@/features/projects/project-card';
 import { TagFilter } from '@/features/projects/tag-filter';
 import { useProjectFilter } from '@/features/projects/filter-store';
-import { projects } from '@/lib/content';
+import { profile, projects } from '@/lib/content';
 import { collectTags, filterProjects } from '@/lib/projects';
 
 /**
@@ -70,6 +71,31 @@ export default function ProjectsPage() {
           </Button>
         </div>
       )}
+
+      {/*
+        GitHub 仓库列表：本站唯一的运行时数据源。
+        放在筛选结果之后、作为独立的横向区块，避免与"本站项目"混淆 ——
+        两者性质不同：上面是我做的项目，下面是开源仓库的动态列表。
+      */}
+      {profile.integrations.githubUsername !== null ? (
+        <section className="mt-20 grid gap-6">
+          <Reveal>
+            <div>
+              <h2 className="text-2xl font-semibold tracking-tight">开源仓库</h2>
+              <p className="mt-2 max-w-prose text-sm text-slate-500 dark:text-slate-400">
+                通过 GitHub API 实时获取，含缓存与限流提示。未认证接口每小时限 60 次请求。
+              </p>
+            </div>
+          </Reveal>
+
+          <Reveal>
+            <LazyGithubRepositories
+              username={profile.integrations.githubUsername}
+              limit={profile.integrations.githubRepoLimit}
+            />
+          </Reveal>
+        </section>
+      ) : null}
     </Container>
   );
 }

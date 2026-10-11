@@ -32,6 +32,25 @@ export const privacySchema = z.object({
 
 export type Privacy = z.infer<typeof privacySchema>;
 
+/**
+ * 第三方集成的配置。
+ *
+ * 为什么放在内容里而不是写死在组件里：
+ * 1. 账号名属于"事实"，会被零硬编码守卫拦下（见 scripts/verify-content-usage.ts）；
+ * 2. 换账号、调展示条数不需要改代码，也不需要重新构建组件逻辑。
+ *
+ * 注意这里**只放公开信息**。任何令牌都不该写进内容文件 ——
+ * 内容会被内联进产物，而产物是公开的。令牌走环境变量（见 src/vite-env.d.ts）。
+ */
+export const integrationsSchema = z.object({
+  /** GitHub 用户名，用 GitHub REST API 拉取公开仓库 */
+  githubUsername: z.string().min(1).nullable().default(null),
+  /** 最多展示多少个仓库，避免列表过长 */
+  githubRepoLimit: z.number().int().positive().max(30).default(6),
+});
+
+export type Integrations = z.infer<typeof integrationsSchema>;
+
 export const profileSchema = z.object({
   name: z.string().min(1),
   /** 别名/常用网名，没有则为 null */
@@ -49,8 +68,21 @@ export const profileSchema = z.object({
    * 更适合当作可维护的数据。
    */
   builtWith: z.string().min(1).default('React + TypeScript'),
+  /**
+   * Header 处品牌标识的两段文字，渲染成 `前缀.后缀` 的等宽字体样式。
+   *
+   * 拆成两段是因为样式不同（后缀带品牌色）。放进内容的原因与 builtWith 相同：
+   * 它包含用户名这类事实，写死在组件里会被 verify:content 拦下。
+   */
+  brandMark: z
+    .object({
+      prefix: z.string().min(1),
+      suffix: z.string().min(1),
+    })
+    .default({ prefix: 'portfolio', suffix: '.resume' }),
   links: z.array(socialLinkSchema).default([]),
   privacy: privacySchema.default({ showPhone: false, allowResumeDownload: true }),
+  integrations: integrationsSchema.default({ githubUsername: null, githubRepoLimit: 6 }),
 });
 
 export type Profile = z.infer<typeof profileSchema>;

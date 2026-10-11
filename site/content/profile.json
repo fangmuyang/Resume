@@ -7,6 +7,10 @@
   "availability": "寻找前端开发方向实习机会",
   "avatar": null,
   "builtWith": "React 19 + TypeScript + Vite",
+  "brandMark": {
+    "prefix": "fangmuyang",
+    "suffix": ".resume"
+  },
   "links": [
     {
       "kind": "email",
@@ -36,5 +40,9 @@
   "privacy": {
     "showPhone": false,
     "allowResumeDownload": true
+  },
+  "integrations": {
+    "githubUsername": "fangmuyang",
+    "githubRepoLimit": 6
   }
 }

@@ -379,6 +379,7 @@ async function main(): Promise<void> {
     availability: '寻找前端开发方向实习机会',
     avatar: null,
     builtWith: 'React 19 + TypeScript + Vite',
+    brandMark: { prefix: 'fangmuyang', suffix: '.resume' },
     links: [
       {
         kind: 'email',
@@ -409,6 +410,11 @@ async function main(): Promise<void> {
     privacy: {
       showPhone: false,
       allowResumeDownload: true,
+    },
+    integrations: {
+      // GitHub 用户名来自内容，供阶段 8 的仓库列表使用
+      githubUsername: 'fangmuyang',
+      githubRepoLimit: 6,
     },
   };
 

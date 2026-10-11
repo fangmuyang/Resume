@@ -4,6 +4,7 @@ import { Link, NavLink, useLocation } from 'react-router';
 
 import { SEARCH_SHORTCUT_LABEL, useSearchStore } from '@/features/search/search-store';
 import { ThemeToggle } from '@/features/theme/theme-toggle';
+import { profile } from '@/lib/content';
 import { NAV_ITEMS } from '@/lib/navigation';
 import { cn } from '@/lib/utils';
 
@@ -82,7 +83,8 @@ export function Header() {
           to="/"
           className="font-mono text-sm font-semibold tracking-tight text-slate-900 dark:text-slate-100"
         >
-          fangmuyang<span className="text-brand-600 dark:text-brand-500">.resume</span>
+          {profile.brandMark.prefix}
+          <span className="text-brand-600 dark:text-brand-500">{profile.brandMark.suffix}</span>
         </Link>
 
         <nav aria-label="主导航" className="hidden items-center gap-1 md:flex">
