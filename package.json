@@ -21,7 +21,8 @@
     "check": "pnpm --dir site run check",
     "verify:build": "pnpm --dir site run verify:build",
     "verify:content": "pnpm --dir site run verify:content",
-    "verify:privacy": "pnpm --dir site run verify:privacy"
+    "verify:privacy": "pnpm --dir site run verify:privacy",
+    "verify:search": "pnpm --dir site run verify:search"
   },
   "devDependencies": {
     "@commitlint/cli": "19.8.1",

@@ -2,11 +2,60 @@
 
 > 个人网站学习项目 · React 19 + TypeScript + Vite
 > 内容来源：`MyResume.pdf`（1 页中文简历，Chromium/Skia 打印导出）
-> 状态：**阶段 0–6 已完成并验证**，等待补充素材后进入阶段 7
+> 状态：**阶段 0–7 已完成并验证**，等待补充素材后进入阶段 8
 
 ---
 
 ## 0. 阶段完成记录
+
+### 阶段 7 · 站内搜索 + 联系表单（已完成）
+
+| 项目       | 结果                                                                                                            |
+| ---------- | --------------------------------------------------------------------------------------------------------------- |
+| 搜索索引   | Fuse.js 统一索引项目、文章、技能、教育经历、导航页面                                                            |
+| 搜索面板   | 原生 `<dialog>` + `showModal()`，`⌘K` / `Ctrl+K` 唤起                                                           |
+| 键盘操作   | 上下键选择、回车跳转、`Esc` 关闭，`role="combobox"` + `role="listbox"`                                          |
+| 懒加载     | 面板含 Fuse 与索引单独成块 31.7 KB，按快捷键才下载                                                              |
+| 联系表单   | React Hook Form + Zod，判别联合状态机，含蜜罐字段                                                               |
+| 表单无障碍 | `aria-invalid` + `aria-describedby` 关联错误，`aria-live` 播报提交状态                                          |
+| 新增守卫   | `pnpm verify:search` 检查索引覆盖与跳转目标                                                                     |
+| 验证结果   | validate ✓ verify:content ✓ verify:search ✓ verify:privacy ✓ typecheck ✓ lint ✓ format ✓ build ✓ verify:build ✓ |
+
+**阶段 7 解决的问题与踩坑记录**
+
+1. **三种状态、三种方案 —— 判断依据是"谁需要读它"。**
+
+   | 状态       | 方案            | 理由                                          |
+   | ---------- | --------------- | --------------------------------------------- |
+   | 作品集筛选 | URL             | 需要可分享、可刷新、可后退 —— 必须可寻址      |
+   | 移动端抽屉 | 局部 `useState` | 只有 Header 用，没有跨组件消费                |
+   | 搜索面板   | Zustand         | 三处要读写：Header 按钮、全局快捷键、面板自身 |
+
+   不是"能放进全局 store 就放进去"，而是看消费方是否分散。搜索面板刻意
+   **不做持久化** —— 刷新后自动关闭才符合预期，这与主题状态正好相反。
+
+2. **用原生 `<dialog>` 而不是手写模态框。** 手写要实现焦点陷阱、`Escape` 关闭、
+   点击遮罩关闭、`aria-modal`、背景不可滚动、关闭后焦点归还 ——
+   这些浏览器已经内置在 `showModal()` 里，而且实现质量比自己写更可靠
+   （焦点陷阱的手写版本几乎都有漏洞）。
+   这里 effect 的职责是**把 React 状态同步到 DOM API**，正是它的正当用途。
+
+3. **`<dialog>` 的 `onCancel` 必须手动关。** 按 `Escape` 时浏览器会关闭 DOM，
+   但 store 不知道，结果是"DOM 关了、状态还开着"，下次点按钮就打不开。
+   必须 `preventDefault()` 后自己走关闭逻辑，保持状态与 DOM 同步。
+
+4. **Fuse 索引只构建一次。** 如果每次按键都 `new Fuse(...)`，
+   等于每次重新索引全站内容，数据量一大立刻卡顿。
+   索引放在模块顶层创建，之后只调用 `search()`。
+
+5. **`exactOptionalPropertyTypes` 又拦下一个真实类型问题。**
+   蜜罐字段写成 `.optional().default('')` 会让 schema 的**输入**类型是
+   `string | undefined` 而**输出**类型是 `string`，两者不一致时
+   `zodResolver` 的类型就匹配不上。去掉 `.default()`、改由表单的
+   `defaultValues` 提供空初值，职责反而更清楚。
+
+6. **`Array.isArray` 的收窄结果是 `any[]`。** 于是 `[...list]` 触发
+   `no-unsafe-assignment`。显式标注 `const list: unknown[] = ...` 才通过。
 
 ### 阶段 6 · 简历页 + PDF 预览与下载（已完成）
 
@@ -346,7 +395,7 @@ Zustand(theme/search/tag) ──────────────▶  React R
 | **4**  | 项目/作品集 + 标签筛选          | 动态路由、筛选状态、卡片动效                                              | 筛选可用；详情页可直接刷新打开                                        | ✅ 完成 |
 | **5**  | 文章/笔记（MDX）                | MDX、代码高亮、构建期内容收集                                             | MDX 内可嵌入 React 组件并正常渲染                                     | ✅ 完成 |
 | **6**  | 简历页 + PDF 预览/下载          | pdfjs-dist 前端预览、文件下载                                             | PDF 可预览可下载；**手机号不在网页正文出现**                          | ✅ 完成 |
-| **7**  | 搜索 + 联系表单                 | Fuse.js、React Hook Form + Zod                                            | 搜索命中项目/文章/技能；表单非法输入有提示                            | ⬜      |
+| **7**  | 搜索 + 联系表单                 | Fuse.js、React Hook Form + Zod                                            | 搜索命中项目/文章/技能；表单非法输入有提示                            | ✅ 完成 |
 | **8**  | GitHub API + Query + MSW        | TanStack Query、MSW                                                       | 动态仓库列表有 loading/error 态；测试中网络被 mock                    | ⬜      |
 | **9**  | 测试体系 + E2E                  | Vitest、RTL、Playwright、覆盖率                                           | 单测与 E2E 全绿                                                       | ⬜      |
 | **10** | SEO + PWA + 可访问性 + 性能     | React 19 metadata、vite-plugin-pwa、a11y、Lighthouse                      | Lighthouse 四维 ≥ 90；可安装为 PWA                                    | ⬜      |

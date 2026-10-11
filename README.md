@@ -99,6 +99,7 @@ pnpm build:content   # extract + build:posts-index + 生成净化副本
 pnpm verify:content  # 检查页面是否有硬编码文案（应全部来自 content/）
 pnpm verify:build    # 检查产物：base 前缀、basename、分块、防 FOUC 脚本
 pnpm verify:privacy  # 扫描产物，确认私密字段（手机号）没有泄漏
+pnpm verify:search   # 检查搜索索引覆盖与跳转目标是否有效
 pnpm typecheck       # 仅类型检查
 pnpm lint            # ESLint
 pnpm format          # Prettier 写入格式化
