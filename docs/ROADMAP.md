@@ -2,11 +2,125 @@
 
 > 个人网站学习项目 · React 19 + TypeScript + Vite
 > 内容来源：`MyResume.pdf`（1 页中文简历，Chromium/Skia 打印导出）
-> 状态：**阶段 0–9 已完成并验证**，等待补充素材后进入阶段 10
+> 状态：**阶段 0–10 已完成并验证**，等待补充素材后进入阶段 11
 
 ---
 
 ## 0. 阶段完成记录
+
+### 阶段 10 · SEO + PWA + E2E 首次真机验证（已完成）
+
+| 项目                 | 结果                                                                                                                       |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| 页面级元数据         | React 19 原生 metadata 提升（不引 react-helmet-async），7 个页面各自的 title / description / canonical / OG / Twitter Card |
+| 结构化数据           | JSON-LD：首页 WebSite、关于页 Person、文章页 TechArticle                                                                   |
+| sitemap              | 构建期生成，13 条 URL（静态页 + 4 个项目 + 3 篇文章），草稿自动排除                                                        |
+| robots.txt           | 生成，含抓取规则与绝对地址的 sitemap 声明                                                                                  |
+| PWA                  | vite-plugin-pwa：可安装、离线浏览已访问页面、预缓存仅 50.97 KiB                                                            |
+| 图标                 | Pillow 脚本生成 5 个尺寸（含 maskable 与 apple-touch-icon）                                                                |
+| 守卫范围             | 零硬编码检查从「pages + components」扩大到整个 `src/`（58 个文件）                                                         |
+| **E2E 首次真机运行** | **142 个用例全部通过**（桌面 + 移动端两个 project，跑生产构建产物）                                                        |
+| 验证结果             | check（91 单测）✓ build（含全部守卫）✓ **E2E 142 ✓**                                                                       |
+
+**阶段 10 解决的问题与踩坑记录**
+
+1. **零硬编码守卫的范围缺口是我自己撞上的。**
+   第一版只扫 `src/pages` 与 `src/components` —— 因为当时文案只写在那两处。
+   写 SEO 组件时我把中文文案放进 `src/lib/seo/`，**它逃过了检查**。
+   一个"只覆盖部分目录"的守卫比没有守卫更危险：它会让人误以为已经被保护了。
+   扩大到整个 `src/` 后立刻抓出 `project-card.tsx` 里的状态标签映射表。
+   修法不是加白名单，而是新增 `content/enum-labels.json`：
+   英文枚举是稳定的数据标识符，中文标签属于内容。
+
+2. **`REPO_NAME` 在两处重复定义。**
+   它同时决定 base、PWA scope 与 canonical 前缀，改仓库名时必然漏掉一处，
+   且"canonical 指向旧路径"不会报错。改成从 `site-config.ts` 单点导入。
+
+3. **生成的静态文件是"静默失效"的重灾区。**
+   sitemap 少一条 URL、robots.txt 里地址写错、manifest 的 scope 与 base 不一致
+   —— 全都不报错。所以加了 `verify:seo` 在构建后检查，
+   并**用一个故意改坏的 index.html 验证过它真的会失败**（exit 1 且给出差异对比）。
+
+4. **官方图标生成工具装不上。**
+   `@vite-pwa/assets-generator` 依赖 `sharp`，后者要下载平台专用二进制，
+   在受限网络下会挂住（与 Playwright 浏览器同类问题），
+   过程中还弄坏了锁文件（需 `--no-frozen-lockfile` 修复）。
+   改用 Python/Pillow 直接画。第一版生成的图标看起来是**纯色** ——
+   逐列画矩形的方式被后续操作覆盖了；改成"先构造渐变图像、再用圆角遮罩"才正确。
+
+5. **precache 不能无脑收全量产物。**
+   Workbox 默认把 `dist` 下所有文件塞进 precache 清单。
+   本项目 `pdf-*.js` 有 437 KB、三篇文章 chunk 合计约 66 KB，
+   全收进去等于把安装体积翻倍，而多数访客不会打开简历预览。
+   改为只预缓存 HTML 与图标（50.97 KiB），JS/CSS 走运行时按需缓存。
+
+6. **`vite preview` 默认 `base: '/'`，导致产物全 404、页面全白。**
+   E2E 第一次真正跑起来时撞上的就是它：`vite build` 成功、
+   `verify:build` 也通过（它检查产物文件里的路径），但用 preview 打开是白屏。
+   必须显式传 `--base /resume/`。
+   **这正是"必须用真实浏览器验证"的价值所在。**
+
+7. **E2E 的地址要用 `localhost` 而不是 `127.0.0.1`。**
+   `vite preview` 不加 `--host` 时只绑定 IPv6 回环（`::1`），
+   而 `127.0.0.1` 是 IPv4。写成后者会得到"无法连接到远程服务器"，
+   看起来像"服务器没起来"，实际是地址族不匹配 ——
+   这个坑在开发阶段一直被误判为"沙箱不允许监听端口"。
+
+8. **Playwright 的浏览器下载不了，但系统 Chrome 可以用。**
+   改用 `channel: 'chrome'` 直接驱动系统已安装的 Chrome。
+   顺带的好处：测的是访客真实使用的浏览器版本。
+
+9. **React 19 只提升 `<title>` / `<meta>` / `<link>`，不提升 `<script>`。**
+   JSON-LD 因此留在 `<body>` 里。虽然 Google 能读，但校验工具建议放 head，
+   改为用 `useLayoutEffect` 显式插入。
+
+10. **去重逻辑一度破坏了整个客户端路由（本次最严重的 bug）。**
+    `index.html` 模板里有默认的 `<title>` 与 description，React 渲染的标签
+    会被提升到 head 并**与之并存**，导致 `document.title` 取到模板那句、
+    每页描述都退回通用描述。
+    我加了"删掉除最后一个之外全部"的 effect，结果路由切换时
+    React 要卸载已被删掉的节点，抛
+    `TypeError: Cannot read properties of null (reading 'removeChild')`，
+    整棵树提交中断 —— **URL 变了但页面不换**，表现为"点导航没反应"。
+    修正：标题改用命令式 `document.title = ...`（React 完全不碰 `<title>`），
+    删除时用 `:not([data-seo-managed])` 限定范围，绝不触碰 React 创建的节点。
+
+11. **搜索的键盘导航有真实可用性缺陷。**
+    原实现 `(index + 1) % hits.length` 在初始未选中时按一次下箭头会跳到
+    **第二项**。改成标准的 roving focus：未选中 → 第一项 → … → 最后一项（不绕回）。
+    同时把 `activeIndex` 初始值改为 `null`，让"未选中"成为明确状态。
+
+12. **错误页显示的是 `statusText` 而不是消息正文。**
+    loader 抛 `new Response('找不到项目「xxx」', { statusText: 'Not Found' })`，
+    而错误边界显示 `404 Not Found` —— 对用户毫无用处。改为优先显示 `error.data`。
+
+13. **漏掉了一个已实现却没有入口的功能。**
+    `filterProjects` 一直支持 AND 语义，但 store 只暴露 OR ——
+    那段 AND 分支是**无法被触达的代码**。写 E2E 时才发现。
+    现在接上 URL（`?match=all`），并在选中两个以上标签时显示切换控件。
+
+14. **我在测试数据上连续错了四次，值得记下来。**
+    "无匹配结果"的用例，我依次挑了 `Vue`+`HTML`、`Vue`+`医疗`、`Uni-app`+`Vue`，
+    全都**恰好同时存在于某个项目上**。第三次时我怀疑 AND 筛选有 bug，
+    查了 store、纯函数、构建产物，最后把标签的字符码打出来，
+    才确认代码完全正确、是我的数据假设错了。
+    第四次是断言写法：`getByText('清除筛选', { exact: true })`
+    同时命中按钮**和按钮祖先 div 的纯文本**；
+    改用 `getByRole` + `.first()`（页面上确实有两个合理的"清除筛选"按钮，
+    不该为迁就测试而删掉一个）。
+    教训：**用测试数据前先确认它真的满足前提**；定位元素用角色而不是纯文本。
+
+**已知局限（必须写清楚）**
+
+本站是纯客户端渲染的 SPA。上面的方案让**执行 JavaScript 的爬虫**
+（Google、Bing 都能执行）看到正确的每页元数据，
+但**不执行 JavaScript 的爬虫**（多数社交平台的预览抓取器）
+只会看到 `index.html` 里的默认标签 —— 所以分享出去的链接，
+预览卡片是通用的那条描述，而不是当页的。
+
+彻底解决需要预渲染或 SSR，那属于架构变更（Next.js / Astro），超出本项目范围。
+`index.html` 里的默认标签因此刻意与首页保持一致，让降级结果不至于是错的，
+并由 `verify:seo` 在构建后核对两者是否同步。
 
 ### 阶段 9 · 测试体系（已完成）
 
@@ -494,21 +608,21 @@ Zustand(theme/search/tag) ──────────────▶  React R
 
 ## 4. 阶段路线图（9B 中步节奏）
 
-| 阶段   | 目标切片                        | 引入的核心技术                                                            | 验收检查点                                                            | 状态    |
-| ------ | ------------------------------- | ------------------------------------------------------------------------- | --------------------------------------------------------------------- | ------- |
-| **0**  | 脚手架 + 工程规范 + Git         | Vite、TS strict、ESLint 9、Prettier、Husky、lint-staged、commitlint、pnpm | lint/typecheck/build 全绿；提交历史规范                               | ✅ 完成 |
-| **1**  | PDF → 内容管道 + Zod 类型系统   | pdfjs-dist、Zod、内容/代码分离                                            | `pnpm extract` 可重跑产出 `content/*.json`；schema 校验失败时构建报错 | ✅ 完成 |
-| **2**  | 路由 + 布局 + 暗黑模式 + 响应式 | React Router、shadcn/ui、Zustand、Framer Motion                           | 6 个路由可达；暗色刷新后保持；移动端无横向滚动                        | ✅ 完成 |
-| **3**  | 首页 + 关于我                   | 组件设计、设计令牌、动画                                                  | 内容全部来自 `content/`，零硬编码文案                                 | ✅ 完成 |
-| **4**  | 项目/作品集 + 标签筛选          | 动态路由、筛选状态、卡片动效                                              | 筛选可用；详情页可直接刷新打开                                        | ✅ 完成 |
-| **5**  | 文章/笔记（MDX）                | MDX、代码高亮、构建期内容收集                                             | MDX 内可嵌入 React 组件并正常渲染                                     | ✅ 完成 |
-| **6**  | 简历页 + PDF 预览/下载          | pdfjs-dist 前端预览、文件下载                                             | PDF 可预览可下载；**手机号不在网页正文出现**                          | ✅ 完成 |
-| **7**  | 搜索 + 联系表单                 | Fuse.js、React Hook Form + Zod                                            | 搜索命中项目/文章/技能；表单非法输入有提示                            | ✅ 完成 |
-| **8**  | GitHub API + Query + MSW        | TanStack Query、MSW                                                       | 动态仓库列表有 loading/error 态；测试中网络被 mock                    | ✅ 完成 |
-| **9**  | 测试体系 + E2E                  | Vitest、RTL、Playwright、覆盖率                                           | 单测与 E2E 全绿                                                       | ✅ 完成 |
-| **10** | SEO + PWA + 可访问性 + 性能     | React 19 metadata、vite-plugin-pwa、a11y、Lighthouse                      | Lighthouse 四维 ≥ 90；可安装为 PWA                                    | ⬜      |
-| **11** | CI/CD + 部署 + 自定义域名       | GitHub Actions、GitHub Pages、404.html 回退                               | push 后自动部署成功；子路径刷新不 404                                 | ⬜      |
-| **12** | 学习文档                        | 归档                                                                      | `docs/LEARNING.md` 覆盖 9 大章节                                      | ⬜      |
+| 阶段   | 目标切片                        | 引入的核心技术                                                            | 验收检查点                                                            | 状态                     |
+| ------ | ------------------------------- | ------------------------------------------------------------------------- | --------------------------------------------------------------------- | ------------------------ |
+| **0**  | 脚手架 + 工程规范 + Git         | Vite、TS strict、ESLint 9、Prettier、Husky、lint-staged、commitlint、pnpm | lint/typecheck/build 全绿；提交历史规范                               | ✅ 完成                  |
+| **1**  | PDF → 内容管道 + Zod 类型系统   | pdfjs-dist、Zod、内容/代码分离                                            | `pnpm extract` 可重跑产出 `content/*.json`；schema 校验失败时构建报错 | ✅ 完成                  |
+| **2**  | 路由 + 布局 + 暗黑模式 + 响应式 | React Router、shadcn/ui、Zustand、Framer Motion                           | 6 个路由可达；暗色刷新后保持；移动端无横向滚动                        | ✅ 完成                  |
+| **3**  | 首页 + 关于我                   | 组件设计、设计令牌、动画                                                  | 内容全部来自 `content/`，零硬编码文案                                 | ✅ 完成                  |
+| **4**  | 项目/作品集 + 标签筛选          | 动态路由、筛选状态、卡片动效                                              | 筛选可用；详情页可直接刷新打开                                        | ✅ 完成                  |
+| **5**  | 文章/笔记（MDX）                | MDX、代码高亮、构建期内容收集                                             | MDX 内可嵌入 React 组件并正常渲染                                     | ✅ 完成                  |
+| **6**  | 简历页 + PDF 预览/下载          | pdfjs-dist 前端预览、文件下载                                             | PDF 可预览可下载；**手机号不在网页正文出现**                          | ✅ 完成                  |
+| **7**  | 搜索 + 联系表单                 | Fuse.js、React Hook Form + Zod                                            | 搜索命中项目/文章/技能；表单非法输入有提示                            | ✅ 完成                  |
+| **8**  | GitHub API + Query + MSW        | TanStack Query、MSW                                                       | 动态仓库列表有 loading/error 态；测试中网络被 mock                    | ✅ 完成                  |
+| **9**  | 测试体系 + E2E                  | Vitest、RTL、Playwright、覆盖率                                           | 单测与 E2E 全绿                                                       | ✅ 完成                  |
+| **10** | SEO + PWA + 可访问性 + 性能     | React 19 metadata、vite-plugin-pwa、a11y、Lighthouse                      | PWA 可安装（E2E 实测）；Lighthouse 四维 ≥ 90                          | ⚠️ PWA 已验收 · 性能未测 |
+| **11** | CI/CD + 部署 + 自定义域名       | GitHub Actions、GitHub Pages、404.html 回退                               | push 后自动部署成功；子路径刷新不 404                                 | ⬜                       |
+| **12** | 学习文档                        | 归档                                                                      | `docs/LEARNING.md` 覆盖 9 大章节                                      | ⬜                       |
 
 每个阶段交付时统一包含：**目标 · 步骤 · 关键代码 · 代码解释 · 常见坑 · 练习建议 · 检查点**。
 

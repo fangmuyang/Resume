@@ -23,8 +23,35 @@
 import { useCallback, useMemo } from 'react';
 import { useSearchParams } from 'react-router';
 
+import type { TagMatchMode } from '@/lib/projects';
+
 /** 查询参数名 */
 export const TAGS_PARAM = 'tags';
+
+/**
+ * 匹配模式参数。
+ *
+ * ## 为什么需要它
+ *
+ * `filterProjects` 从一开始就支持两种语义（`'any'` = OR，`'all'` = AND），
+ * 但 store 只暴露了 OR —— 也就是说 AND 分支**没有入口**，
+ * 是一段无法被触达的代码。E2E 用例写 `?match=all` 时才发现这一点。
+ *
+ * 那种"选了多个标签后一个结果都不剩"的困惑，正确答案是让用户
+ * 自己选择语义，而不是替他决定。所以把它接到 URL 上。
+ *
+ * ## 为什么默认是 any
+ *
+ * 用户点两个标签时，通常想"看这两个方向的内容"（并集）；
+ * 而 AND 更常用于"在已有结果里继续收窄"。
+ * 默认值应与最常见的意图一致。
+ */
+export const MATCH_PARAM = 'match';
+
+/** 解析匹配模式；除显式的 all 之外一律按 any 处理（对错误输入更宽容） */
+export function parseMatchMode(value: string | null): TagMatchMode {
+  return value === 'all' ? 'all' : 'any';
+}
 
 /** 解析 'a,b,c' → ['a','b','c']，去掉空值与重复项 */
 export function parseTags(value: string | null): string[] {
@@ -53,9 +80,13 @@ export function toggleTag(tags: readonly string[], tag: string): string[] {
 export interface ProjectFilter {
   /** 当前选中的标签（技术栈与领域标签混合） */
   selectedTags: string[];
+  /** 多标签时的匹配语义：any = 任一命中，all = 全部命中 */
+  matchMode: TagMatchMode;
   /** 是否处于筛选状态 */
   isFiltering: boolean;
   toggle: (tag: string) => void;
+  /** 切换匹配语义 */
+  setMatchMode: (mode: TagMatchMode) => void;
   clear: () => void;
 }
 
@@ -64,6 +95,7 @@ export function useProjectFilter(): ProjectFilter {
 
   // 直接以 URL 为唯一依据，不在组件里留副本 —— 两份状态迟早会不一致
   const selectedTags = useMemo(() => parseTags(searchParams.get(TAGS_PARAM)), [searchParams]);
+  const matchMode = useMemo(() => parseMatchMode(searchParams.get(MATCH_PARAM)), [searchParams]);
 
   const toggle = useCallback(
     (tag: string) => {
@@ -73,6 +105,8 @@ export function useProjectFilter(): ProjectFilter {
 
       if (serialized === null) {
         params.delete(TAGS_PARAM);
+        // 标签清空后匹配语义已无意义，一并移除，避免 URL 里留下悬空参数
+        params.delete(MATCH_PARAM);
       } else {
         params.set(TAGS_PARAM, serialized);
       }
@@ -82,16 +116,35 @@ export function useProjectFilter(): ProjectFilter {
     [searchParams, selectedTags, setSearchParams],
   );
 
+  const setMatchMode = useCallback(
+    (mode: TagMatchMode) => {
+      const params = new URLSearchParams(searchParams);
+
+      if (mode === 'any') {
+        // 默认值不进 URL：让链接尽量短，也让"默认"只有一个定义处
+        params.delete(MATCH_PARAM);
+      } else {
+        params.set(MATCH_PARAM, mode);
+      }
+
+      setSearchParams(params, { replace: true });
+    },
+    [searchParams, setSearchParams],
+  );
+
   const clear = useCallback(() => {
     const params = new URLSearchParams(searchParams);
     params.delete(TAGS_PARAM);
+    params.delete(MATCH_PARAM);
     setSearchParams(params, { replace: true });
   }, [searchParams, setSearchParams]);
 
   return {
     selectedTags,
+    matchMode,
     isFiltering: selectedTags.length > 0,
     toggle,
+    setMatchMode,
     clear,
   };
 }

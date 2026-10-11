@@ -38,7 +38,14 @@ export function SearchDialog() {
   const navigate = useNavigate();
 
   const [query, setQuery] = useState('');
-  const [activeIndex, setActiveIndex] = useState(0);
+  /**
+   * 当前选中的结果序号。
+   *
+   * `null` 表示"没有选中任何项" —— 这是一个有意义的初始状态，
+   * 不是"选中了第 0 项"。第一版用 `useState(0)` 把两者混为一谈，
+   * 导致按一次下箭头会直接跳到第二项（见 handleKeyDown 的说明）。
+   */
+  const [activeIndex, setActiveIndex] = useState<number | null>(null);
 
   const hits = useMemo(() => searchContent(query), [query]);
 
@@ -59,12 +66,18 @@ export function SearchDialog() {
   // 在 effect 里同步 setState 会触发级联渲染。
   const handleClose = (): void => {
     setQuery('');
-    setActiveIndex(0);
+    setActiveIndex(null);
     close();
   };
 
-  // activeIndex 可能超出新的结果范围（输入变化后结果变少），这里夹紧它
-  const safeActiveIndex = hits.length === 0 ? 0 : Math.min(activeIndex, hits.length - 1);
+  /**
+   * 把 activeIndex 夹到有效范围内。
+   *
+   * 输入变化后结果会变少，旧的下标可能越界；越界时视为"未选中"，
+   * 而不是硬夹到某一项 —— 那会让用户以为某项是被自己选中的。
+   */
+  const safeActiveIndex =
+    activeIndex !== null && activeIndex >= 0 && activeIndex < hits.length ? activeIndex : null;
 
   const goTo = (hit: SearchHit): void => {
     handleClose();
@@ -76,12 +89,28 @@ export function SearchDialog() {
 
     if (event.key === 'ArrowDown') {
       event.preventDefault();
-      setActiveIndex((index) => (index + 1) % hits.length);
+      /**
+       * 第一步只做"选中第一项"，而不是"移到第二项"。
+       *
+       * 第一版写成 `(index + 1) % hits.length`，于是初始状态（未选中）
+       * 按一次下箭头会直接跳到**第二项** —— 用户按一下却选中了第二个结果。
+       * 这是真实浏览器验证时才发现的可用性缺陷。
+       *
+       * 修正后是标准的 roving focus 行为：
+       * 未选中 → 第一项 → 第二项 → … → 最后一项 → 停住（不再绕回）。
+       * 不绕回的原因：从最后一项跳回第一项会让用户以为列表循环了，
+       * 而在一个搜索列表里循环没有实际意义。
+       */
+      setActiveIndex((index) => (index === null ? 0 : Math.min(index + 1, hits.length - 1)));
     } else if (event.key === 'ArrowUp') {
       event.preventDefault();
-      setActiveIndex((index) => (index - 1 + hits.length) % hits.length);
+      // 对称处理：未选中时上箭头停在第一项，而不是绕到最后一项
+      setActiveIndex((index) => (index === null ? 0 : Math.max(index - 1, 0)));
     } else if (event.key === 'Enter') {
       event.preventDefault();
+      // 未选中任何项时回车不做跳转 —— 与"没有明确选择"的语义一致
+      if (safeActiveIndex === null) return;
+
       const hit = hits[safeActiveIndex];
       if (hit !== undefined) goTo(hit);
     }
@@ -115,7 +144,14 @@ export function SearchDialog() {
           value={query}
           onChange={(event) => {
             setQuery(event.target.value);
-            setActiveIndex(0);
+            /**
+             * 输入变化时清空选中项，而不是默认选中第一项。
+             *
+             * 理由：用户继续打字说明他还在找目标，此时"第一项已选中"
+             * 会让回车跳到他不想要的结果。清空后回车不做任何事，
+             * 用户必须显式用方向键选择 —— 这比"猜他想选什么"更安全。
+             */
+            setActiveIndex(null);
           }}
           placeholder="搜索项目、文章、技能…"
           // 组合框语义：输入框控制下方列表，屏幕阅读器能关联起来

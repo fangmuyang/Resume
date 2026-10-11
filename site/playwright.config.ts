@@ -25,6 +25,18 @@ import { defineConfig, devices } from '@playwright/test';
 const PORT = 4173;
 const BASE_PATH = '/resume/';
 
+/**
+ * 用 `localhost` 而不是 `127.0.0.1`。
+ *
+ * 这不是风格问题：`vite preview` 在没有 `--host` 时只绑定 IPv6 回环（`::1`），
+ * 而 `127.0.0.1` 是 IPv4 地址。写成后者会得到
+ * "无法连接到远程服务器"，看起来像"服务器没起来"，
+ * 实际是地址族不匹配 —— 很容易在这上面浪费大量时间（本项目就踩过一次）。
+ *
+ * `localhost` 会按系统解析顺序同时覆盖两者，所以更稳妥。
+ */
+const HOST = 'localhost';
+
 export default defineConfig({
   testDir: './e2e',
 
@@ -39,7 +51,7 @@ export default defineConfig({
   reporter: process.env['CI'] === undefined ? 'list' : [['github'], ['html', { open: 'never' }]],
 
   use: {
-    baseURL: `http://127.0.0.1:${PORT}${BASE_PATH}`,
+    baseURL: `http://${HOST}:${PORT}${BASE_PATH}`,
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
   },
@@ -47,7 +59,20 @@ export default defineConfig({
   projects: [
     {
       name: 'desktop-chromium',
-      use: { ...devices['Desktop Chrome'] },
+      /**
+       * 用系统已安装的 Chrome，而不是 Playwright 自带的 Chromium。
+       *
+       * 两个原因：
+       * 1. 本项目的开发环境**下载不了** Playwright 的浏览器二进制
+       *    （受限网络，与 sharp 的问题同类）；
+       * 2. 对个人站点来说，用真实用户的浏览器版本测试更接近实际 ——
+       *    Chrome 的稳定版就是访客在用的那个。
+       *
+       * 需要本机装有 Chrome（macOS / Linux / Windows 都常见）。
+       * CI 上如果没装，改回 `browserName: 'chromium'` 并运行
+       * `pnpm test:e2e:install` 即可。
+       */
+      use: { ...devices['Desktop Chrome'], channel: 'chrome' },
     },
     {
       /**
@@ -56,7 +81,7 @@ export default defineConfig({
        * 只改宽度测不到移动端的触摸行为与 UA 相关的分支。
        */
       name: 'mobile-chromium',
-      use: { ...devices['Pixel 7'] },
+      use: { ...devices['Pixel 7'], channel: 'chrome' },
     },
   ],
 
@@ -66,10 +91,21 @@ export default defineConfig({
    * 原因：dev server 不做资源哈希、不做代码分割、不做 base 前缀处理 ——
    * 而这三件事恰恰是部署环节最容易出问题的地方。
    * 测生产产物才能真正验证"部署后能不能用"。
+   *
+   * ## `--base` 必须显式传
+   *
+   * `vite preview` 的 `base` 默认是 `/`，而构建产物里的资源路径是
+   * `/resume/assets/...`。不传这个参数时，服务器会在根路径下找
+   * `/assets/...`，于是**每一个 JS 都 404、页面完全空白**。
+   *
+   * 这个坑很隐蔽：`vite build` 成功、`verify:build` 也通过
+   * （它检查的是产物文件里的路径），但用 preview 打开就是白屏。
+   * 本项目的 E2E 第一次真正跑起来时就撞上了它 ——
+   * 这正是"必须用真实浏览器验证"的价值所在。
    */
   webServer: {
-    command: `npm run preview -- --port ${PORT} --strictPort`,
-    url: `http://127.0.0.1:${PORT}${BASE_PATH}`,
+    command: `npx vite preview --port ${PORT} --strictPort --base ${BASE_PATH}`,
+    url: `http://${HOST}:${PORT}${BASE_PATH}`,
     reuseExistingServer: process.env['CI'] === undefined,
     timeout: 120_000,
   },

@@ -33,8 +33,30 @@ const projectRoot = dirname(here);
 const repoRoot = dirname(projectRoot);
 const contentDir = join(projectRoot, 'content');
 
-/** 需要扫描的源码目录 */
-const SOURCE_DIRS = [join(projectRoot, 'src', 'pages'), join(projectRoot, 'src', 'components')];
+/**
+ * 需要扫描的源码目录。
+ *
+ * ## 为什么扩大到整个 src/
+ *
+ * 第一版只扫 `src/pages` 与 `src/components` —— 因为当时文案只写在那两处。
+ * 但这是个**范围缺口**：把文案写进 `src/lib/` 或 `src/features/` 就能绕过检查。
+ * 阶段 10 加 SEO 组件时我自己就撞上了这个缺口（`src/lib/seo/` 里的文案没被检查）。
+ *
+ * 一个"只覆盖部分目录"的守卫比没有守卫更危险：它会让人误以为已经被保护了。
+ * 所以范围扩到整个 `src/`，只排除真正不该检查的部分（见下方 EXCLUDED）。
+ */
+const SOURCE_ROOT = join(projectRoot, 'src');
+
+/**
+ * 不参与硬编码检查的路径片段。
+ *
+ * 每一类都有明确理由，不是"检查报错就加进来"：
+ * - `test/`：测试里的期望值本来就该是字面量，断言依赖具体文案；
+ * - `.test.`：同上；
+ * - `content/`：构建期专用的 schema 与校验代码，它们的字符串是**字段名与默认值**，
+ *   不是展示文案（且不进入浏览器产物）。
+ */
+const EXCLUDED_PATH_PARTS = ['/test/', '.test.', '/lib/content/'];
 
 /** 单词语技术名不算"事实"，不参与检查 */
 const MIN_LENGTH_SINGLE_WORD = 8;
@@ -60,6 +82,20 @@ function isFactLike(value: string): boolean {
   return value.length >= MIN_LENGTH_SINGLE_WORD;
 }
 
+/**
+ * 不参与检查的内容文件。
+ *
+ * `enum-labels.json` 是**枚举标签表**：它的键（`completed`、`job`）是数据模型里的
+ * 标识符，不是展示文案 —— 组件必须以字面量引用它们才能完成类型检查
+ * （`Record<Project['status'], string>` 的键就是这些标识符）。
+ *
+ * 如果把这些键也当作"内容值"，就会陷入一个死循环：
+ * 无论怎么组织代码，都必须在某处写出 `completed` 这个字符串。
+ * 加入白名单是承认这个事实，而不是为了让检查通过而放水 ——
+ * 该文件的**值**（`已完成`、`实习 / 工作机会`）仍然照常检查。
+ */
+const EXCLUDED_CONTENT_FILES = new Set(['enum-labels.json']);
+
 function collectJsonFiles(dir: string): string[] {
   return readdirSync(dir).flatMap((name) => {
     const full = join(dir, name);
@@ -67,7 +103,9 @@ function collectJsonFiles(dir: string): string[] {
       // raw/ 只是 PDF 原始文本，不是站点内容，跳过
       return name === 'raw' ? [] : collectJsonFiles(full);
     }
-    return name.endsWith('.json') ? [full] : [];
+    if (!name.endsWith('.json')) return [];
+    if (EXCLUDED_CONTENT_FILES.has(name)) return [];
+    return [full];
   });
 }
 
@@ -76,11 +114,15 @@ function collectJsonFiles(dir: string): string[] {
  *
  * 理由是"这类值本来就该出现在源码里"：
  * - `file`：公开资产的 URL 片段（如 `resume.pdf`），组件必须按名字引用它。
+ * - `status`：枚举标识符（`active` / `completed` / `archived`）。
+ *   组件需要用它们做类型化的查表（`STATUS_CLASS[project.status]`），
+ *   所以字符串必然出现在源码里。**它们的展示文案在 enum-labels.json 里**，
+ *   那份文件的“值”照常受检查 —— 所以硬编码风险并没有被放过。
  *
  * 注意这里按**字段名**排除，而不是把具体值加进白名单 ——
- * 前者表达的是"这一类字段不是展示文案"，后者会随着新资产慢慢变成一张废纸。
+ * 前者表达的是"这一类字段不是展示文案"，后者会随着新内容慢慢变成一张废纸。
  */
-const IGNORED_FIELDS = new Set(['file']);
+const IGNORED_FIELDS = new Set(['file', 'status']);
 
 /**
  * 递归取出 JSON 里所有值得检查的字符串值。
@@ -107,7 +149,14 @@ function collectSourceFiles(dir: string): string[] {
   return readdirSync(dir).flatMap((name) => {
     const full = join(dir, name);
     if (statSync(full).isDirectory()) return collectSourceFiles(full);
-    return /\.tsx?$/.test(name) ? [full] : [];
+
+    if (!/\.tsx?$/.test(name)) return [];
+
+    // 路径片段匹配（统一用正斜杠，避免 Windows 反斜杠导致匹配失败）
+    const normalized = full.replace(/\\/g, '/');
+    if (EXCLUDED_PATH_PARTS.some((part) => normalized.includes(part))) return [];
+
+    return [full];
   });
 }
 
@@ -122,7 +171,9 @@ for (const file of collectJsonFiles(contentDir)) {
 
 const violations: { file: string; line: number; fact: string; text: string }[] = [];
 
-for (const file of SOURCE_DIRS.flatMap(collectSourceFiles)) {
+const sourceFiles = collectSourceFiles(SOURCE_ROOT);
+
+for (const file of sourceFiles) {
   const lines = readFileSync(file, 'utf8').split('\n');
 
   for (const [index, line] of lines.entries()) {
@@ -146,7 +197,7 @@ for (const file of SOURCE_DIRS.flatMap(collectSourceFiles)) {
   }
 }
 
-console.log(`已收集 ${facts.size} 条事实型内容，扫描 ${SOURCE_DIRS.length} 个目录。`);
+console.log(`已收集 ${facts.size} 条事实型内容，扫描 ${sourceFiles.length} 个源码文件。`);
 
 if (violations.length === 0) {
   console.log('✓ 未发现硬编码内容：页面文案全部来自 content/。');

@@ -11,26 +11,38 @@
 
 ## 技术栈
 
-| 层次 | 选型                             | 在本项目中的作用                                 |
-| ---- | -------------------------------- | ------------------------------------------------ |
-| 核心 | React 19 · TypeScript 5.9        | 组件与类型系统                                   |
-| 构建 | Vite 7                           | 开发服务器、生产构建与 vendor 分包               |
-| 路由 | React Router 7（数据路由）       | 九个路由、懒加载、路由级错误边界、loader 预取    |
-| 状态 | Zustand 5                        | 主题状态（暗黑模式）                             |
-| 动画 | Motion（Framer Motion）          | 路由切换过渡，尊重 prefers-reduced-motion        |
-| 样式 | Tailwind CSS v4 · cva · clsx     | 设计令牌、变体与类名合并                         |
-| 图标 | lucide-react                     | 图标（按需 tree-shaking）                        |
-| 内容 | Zod 4（仅构建期）· pdfjs-dist    | 内容校验与 PDF 提取，均不进入浏览器产物          |
-| 文章 | MDX 3 · rehype-pretty-code       | Markdown 里嵌入 React 组件，双主题代码高亮       |
-| 搜索 | Fuse.js 7                        | 项目/文章/技能统一索引，懒加载面板               |
-| 表单 | React Hook Form 7 · Zod 4        | 联系表单的校验与状态机                           |
-| 数据 | TanStack Query 5 · MSW 2         | GitHub API 的缓存与重试；测试中在网络层 mock     |
-| 测试 | Vitest 3 · RTL · Playwright      | 单测与组件测试 91 个用例；E2E 覆盖真实浏览器行为 |
-| 质量 | ESLint 9 · Prettier 3            | 静态检查与格式化                                 |
-| 提交 | Husky · lint-staged · commitlint | 本地提交卡口 + 提交信息规范                      |
+| 层次 | 选型                             | 在本项目中的作用                                    |
+| ---- | -------------------------------- | --------------------------------------------------- |
+| 核心 | React 19 · TypeScript 5.9        | 组件与类型系统                                      |
+| 构建 | Vite 7                           | 开发服务器、生产构建与 vendor 分包                  |
+| 路由 | React Router 7（数据路由）       | 九个路由、懒加载、路由级错误边界、loader 预取       |
+| 状态 | Zustand 5                        | 主题状态（暗黑模式）                                |
+| 动画 | Motion（Framer Motion）          | 路由切换过渡，尊重 prefers-reduced-motion           |
+| 样式 | Tailwind CSS v4 · cva · clsx     | 设计令牌、变体与类名合并                            |
+| 图标 | lucide-react                     | 图标（按需 tree-shaking）                           |
+| 内容 | Zod 4（仅构建期）· pdfjs-dist    | 内容校验与 PDF 提取，均不进入浏览器产物             |
+| 文章 | MDX 3 · rehype-pretty-code       | Markdown 里嵌入 React 组件，双主题代码高亮          |
+| 搜索 | Fuse.js 7                        | 项目/文章/技能统一索引，懒加载面板                  |
+| 表单 | React Hook Form 7 · Zod 4        | 联系表单的校验与状态机                              |
+| 数据 | TanStack Query 5 · MSW 2         | GitHub API 的缓存与重试；测试中在网络层 mock        |
+| 测试 | Vitest 3 · RTL · Playwright      | 单测 91 个；E2E 142 个（桌面 + 移动端，跑生产产物） |
+| 质量 | ESLint 9 · Prettier 3            | 静态检查与格式化                                    |
+| 提交 | Husky · lint-staged · commitlint | 本地提交卡口 + 提交信息规范                         |
+| 部署 | PWA · sitemap · JSON-LD          | 子路径部署、可安装、离线浏览已访问页面              |
 
-后续阶段会依次加入 Vitest、React Testing Library、Playwright、PWA
-与 GitHub Actions，详见路线图。
+工程侧还有六个构建后守卫脚本（见「常用命令」），
+它们把「约定」变成可执行的检查，而不是靠人自觉：
+
+| 守卫             | 防止什么                                       |
+| ---------------- | ---------------------------------------------- |
+| `verify:build`   | 子路径前缀丢失、路由分块缺失、动态导入路径写错 |
+| `verify:privacy` | 私密字段（手机号）泄漏进产物                   |
+| `verify:content` | 页面文案硬编码在组件里，脱离内容管道           |
+| `verify:search`  | 搜索索引漏页、跳转目标无效                     |
+| `verify:seo`     | sitemap 缺页、manifest 的 scope 与 base 不一致 |
+| `validate`       | 内容不符合 schema、占位符未清理                |
+
+后续阶段会加入 GitHub Actions 与 GitHub Pages 部署，详见路线图。
 
 ## 目录结构
 
