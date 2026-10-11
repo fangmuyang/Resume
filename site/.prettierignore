@@ -9,5 +9,6 @@ test-results
 pnpm-lock.yaml
 # 构建期产物：由 scripts/build-posts-index.ts 生成，格式由脚本决定
 content/posts-index.json
+content/profile-public.json
 # PDF 原始文本行：机器产出，没有排版价值
 content/raw

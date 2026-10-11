@@ -26,7 +26,11 @@
   }
 
   body {
-    @apply bg-white text-slate-800 antialiased dark:bg-slate-950 dark:text-slate-200;
+    /* 只设置背景与字体平滑，不设置 color ——
+       根布局会显式给出文本色，把颜色集中在一处避免相互覆盖。
+       另外这里不能设 text-* 类，否则会与 TextWithPlaceholder 等
+       组件的颜色工具类产生优先级竞争。 */
+    @apply bg-white antialiased dark:bg-slate-950;
   }
 
   /* 键盘可达性：只在键盘导航时显示焦点环 */
@@ -113,4 +117,52 @@
 
 .dark [data-rehype-pretty-code-figure] code span {
   color: var(--shiki-dark);
+}
+
+/*
+  打印样式
+  ---------------------------------------------------------------------------
+  目标：从简历页「打印 / 另存为 PDF」时得到一份干净的黑白文档。
+  两件事必须做：
+  1. 隐藏交互元素（导航、页脚、主题切换、按钮）—— 打印按钮本身没有意义；
+  2. 强制白底黑字 —— 否则暗色主题下会把整页背景色也打印出来，
+     既费墨又难看。
+  注意 site/ 的 Header 与 Footer 用 CSS 文件里的媒体查询处理，
+  这样可以避免在每个组件里都写一遍 print:hidden。
+*/
+@media print {
+  @page {
+    margin: 16mm;
+  }
+
+  /* 暗色主题在纸上没有意义，强制浅色 */
+  html,
+  body {
+    background-color: #fff !important;
+    color: #000 !important;
+  }
+
+  /* 隐藏站点外壳与所有标记为 print:hidden 的元素 */
+  header,
+  footer,
+  .print\:hidden {
+    display: none !important;
+  }
+
+  /* 避免把卡片/条目从中间切断 */
+  h1,
+  h2,
+  h3,
+  li,
+  .break-inside-avoid {
+    break-inside: avoid;
+  }
+
+  /* 链接在纸上无法点击，把地址显示出来才有用 —— 但只对正文里的外链，
+     不对 mailto/tel（它们的 href 本身就是内容） */
+  a[href^='http']::after {
+    content: ' (' attr(href) ')';
+    font-size: 0.75em;
+    color: #555;
+  }
 }
