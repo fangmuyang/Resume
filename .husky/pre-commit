@@ -1,0 +1,9 @@
+#!/usr/bin/env sh
+# pre-commit: run checks only on the files staged for this commit.
+# lint-staged keeps the check time constant no matter how big the project gets.
+#
+# We call the binary directly (not `pnpm exec`) because husky's shim puts
+# node_modules/.bin on PATH already. That avoids depending on the package
+# manager being globally installed.
+
+lint-staged

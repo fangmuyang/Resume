@@ -1,0 +1,24 @@
+# pnpm 11 workspace configuration.
+# In pnpm 11 most settings live here (camelCase), not in .npmrc.
+# Keep this file ASCII-only: non-ASCII content can be mangled by the Windows
+# ANSI codepage when the file has no BOM.
+
+# Flat npm-style node_modules layout instead of pnpm's default isolated
+# junction layout. Set this if ESM resolution through junctions fails on your
+# machine (symptom: "Cannot find package 'rollup'" from Vite).
+nodeLinker: hoisted
+
+# Recreate node_modules without an interactive prompt when the layout changes.
+# Needed in CI and in non-TTY environments.
+confirmModulesPurge: false
+
+# pnpm 11 blocks dependency install scripts (postinstall) by default.
+# esbuild needs its install script to place the platform binary, so allow it.
+allowBuilds:
+  esbuild: true
+
+# pnpm 11 supply-chain protection: newly published versions are not adopted
+# during an observation window. These are deliberate, exact-version exceptions
+# rather than a blanket opt-out.
+minimumReleaseAgeExclude:
+  - prettier@3.9.10

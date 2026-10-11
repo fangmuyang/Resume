@@ -1,0 +1,9 @@
+dist
+node_modules
+coverage
+playwright-report
+test-results
+*.local
+.DS_Store
+*.log
+pnpm-lock.yaml

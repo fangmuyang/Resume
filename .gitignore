@@ -1,0 +1,45 @@
+# ============ 依赖与包管理器 ============
+node_modules/
+.pnpm-store/
+.pnpm-debug.log*
+
+# ============ 构建产物 ============
+dist/
+dist-ssr/
+*.tsbuildinfo
+
+# ============ 测试与覆盖率 ============
+coverage/
+playwright-report/
+test-results/
+blob-report/
+.playwright/
+
+# ============ 临时验证工具（不进仓库）============
+.tools/
+
+# ============ 权限修复产生的本地报告（不进仓库）============
+Resume-acl-recovery/
+
+# ============ 编辑器与系统 ============
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db
+
+# ============ 日志与环境变量 ============
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.env
+.env.local
+.env.*.local
+
+# ============ Vite / PWA 生成物 ============
+site/dev-dist/
+site/public/sw.js
+site/public/workbox-*.js
+site/public/manifest.webmanifest

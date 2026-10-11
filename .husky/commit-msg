@@ -1,0 +1,5 @@
+#!/usr/bin/env sh
+# commit-msg: validate the commit message against Conventional Commits.
+# $1 is the path of the temp file Git fills with the message.
+
+commitlint --edit "$1"

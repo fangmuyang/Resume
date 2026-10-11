@@ -1,0 +1,42 @@
+/* Tailwind CSS v4：不再需要 tailwind.config.js，
+   配置直接用 CSS 指令写在这里（v4 的核心变化之一）。 */
+@import 'tailwindcss';
+
+/* v4 默认 dark: 变体跟随系统 prefers-color-scheme。
+   我们要做"用户可切换 + 刷新后保持"的主题，所以改成跟随 html 上的 .dark 类。
+   这是 v4 新增 @custom-variant 指令的典型用法。 */
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  /* 设计令牌：后续组件统一从这里取色，避免散落的魔法色值 */
+  --color-brand-50: oklch(0.97 0.02 250);
+  --color-brand-500: oklch(0.62 0.19 258);
+  --color-brand-600: oklch(0.55 0.2 258);
+  --color-brand-700: oklch(0.48 0.19 258);
+
+  --font-sans:
+    'Inter', 'PingFang SC', 'Microsoft YaHei', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', 'Cascadia Code', ui-monospace, 'SFMono-Regular', monospace;
+}
+
+@layer base {
+  html {
+    /* 锚点跳转平滑滚动；prefers-reduced-motion 用户在下面的媒体查询里被尊重 */
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-white text-slate-800 antialiased dark:bg-slate-950 dark:text-slate-200;
+  }
+
+  /* 键盘可达性：只在键盘导航时显示焦点环 */
+  :focus-visible {
+    @apply outline-brand-500 outline-2 outline-offset-2;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+  }
+}

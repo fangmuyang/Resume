@@ -1,0 +1,24 @@
+{
+  "name": "resume-workspace",
+  "version": "0.1.0",
+  "private": true,
+  "description": "个人网站项目根：Git 规范与提交钩子（业务工程在 site/）",
+  "type": "module",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "prepare": "husky",
+    "dev": "pnpm --dir site dev",
+    "build": "pnpm --dir site build",
+    "lint": "pnpm --dir site lint",
+    "typecheck": "pnpm --dir site typecheck",
+    "format": "pnpm --dir site format"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "19.8.1",
+    "@commitlint/config-conventional": "19.8.1",
+    "husky": "9.1.7",
+    "lint-staged": "16.4.0"
+  }
+}
