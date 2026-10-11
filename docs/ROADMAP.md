@@ -2,11 +2,45 @@
 
 > 个人网站学习项目 · React 19 + TypeScript + Vite
 > 内容来源：`MyResume.pdf`（1 页中文简历，Chromium/Skia 打印导出）
-> 状态：**阶段 0、1、2 已完成并验证**，等待补充素材后进入阶段 3
+> 状态：**阶段 0、1、2、3 已完成并验证**，等待补充素材后进入阶段 4
 
 ---
 
 ## 0. 阶段完成记录
+
+### 阶段 3 · 首页 + 关于我（已完成）
+
+| 项目     | 结果                                                                           |
+| -------- | ------------------------------------------------------------------------------ |
+| 首页     | Hero + 精选项目 + 能力概览 + 教育背景，全部由 `content/` 驱动                  |
+| 关于我   | 个人简介、教育经历时间线、获奖、技能分组、联系方式                             |
+| 动画     | `Reveal` / `RevealList` / `RevealItem`：滚动入场 + staggerChildren 依次入场    |
+| 占位呈现 | `TextWithPlaceholder` 把 `TODO:` 字段渲染成醒目的「待补充」提示块              |
+| 新增守卫 | `pnpm verify:content` 自动检查「页面文案零硬编码」                             |
+| 验证结果 | validate ✓ verify:content ✓ typecheck ✓ lint ✓ format ✓ build ✓ verify:build ✓ |
+
+**阶段 3 解决的问题与踩坑记录**
+
+1. **`TODO:` 占位该不该显示？** 直接渲染会出现生硬的 `TODO:一句话自我介绍…`；
+   悄悄替换成空字符串更糟 —— 你会忘记还有内容没写。最终选第三条路：
+   **保留事实但渲染成醒目的提示块**，发布前由 `pnpm validate` 统计剩余数量。
+2. **`whileInView` 必须配 `viewport={{ once: true }}`。** 否则元素每次滚出再滚入
+   都重新播放动画，反复触发既廉价又浪费布局计算。
+3. **`Reveal as="li"` 这类动态取值不能用 `motion[as]`。** 需要断言类型，
+   且传入不存在的标签要到运行时才炸。改成显式映射 `{ div, li, section }`，
+   代价两行，换来类型安全与拼错立即可见。
+4. **`exactOptionalPropertyTypes` 第二次拦下类型问题。** `EASE_OUT` 原本声明为
+   `Transition['ease']`（含 `undefined`），无法赋给 `Transition` 的可选 `ease` 属性。
+   改成具体元组类型 `[number, number, number, number]` 才正确。
+5. **Fast Refresh 约束又出现一次。** `text-with-placeholder.tsx` 同时导出组件与
+   `isPlaceholder` 会触发规则，把判定函数移到 `lib/content-placeholder.ts`。
+6. **「零硬编码」必须可执行，不能靠自觉。** 我写了 `verify-content-usage.ts`：
+   从 `content/` 提取事实型字符串（59 条），扫描页面与组件，命中即报错。
+   第一版判据太糙（误报 19 处，React / TypeScript 这些技术名全中），
+   收紧为「含空格或标点、或长度 ≥ 8 的单词语」后，**只剩 1 处真实命中** ——
+   footer 里硬编码的「React 19 + TypeScript」。这处确实该修，
+   于是把它变成 `profile.builtWith` 数据。
+   教训：守卫脚本的判据要收紧到"只报真问题"，否则很快会被 ignore 掉。
 
 ### 阶段 2 · 路由 + 布局 + 暗黑模式 + 响应式（已完成）
 
@@ -181,7 +215,7 @@ Zustand(theme/search/tag) ──────────────▶  React R
 | **0**  | 脚手架 + 工程规范 + Git         | Vite、TS strict、ESLint 9、Prettier、Husky、lint-staged、commitlint、pnpm | lint/typecheck/build 全绿；提交历史规范                               | ✅ 完成 |
 | **1**  | PDF → 内容管道 + Zod 类型系统   | pdfjs-dist、Zod、内容/代码分离                                            | `pnpm extract` 可重跑产出 `content/*.json`；schema 校验失败时构建报错 | ✅ 完成 |
 | **2**  | 路由 + 布局 + 暗黑模式 + 响应式 | React Router、shadcn/ui、Zustand、Framer Motion                           | 6 个路由可达；暗色刷新后保持；移动端无横向滚动                        | ✅ 完成 |
-| **3**  | 首页 + 关于我                   | 组件设计、设计令牌、动画                                                  | 内容全部来自 `content/`，零硬编码文案                                 | ⬜      |
+| **3**  | 首页 + 关于我                   | 组件设计、设计令牌、动画                                                  | 内容全部来自 `content/`，零硬编码文案                                 | ✅ 完成 |
 | **4**  | 项目/作品集 + 标签筛选          | 动态路由、筛选状态、卡片动效                                              | 筛选可用；详情页可直接刷新打开                                        | ⬜      |
 | **5**  | 文章/笔记（MDX）                | MDX、代码高亮、构建期内容收集                                             | MDX 内可嵌入 React 组件并正常渲染                                     | ⬜      |
 | **6**  | 简历页 + PDF 预览/下载          | pdfjs-dist 前端预览、文件下载                                             | PDF 可预览可下载；**手机号不在网页正文出现**                          | ⬜      |

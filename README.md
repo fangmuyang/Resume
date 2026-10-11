@@ -79,14 +79,16 @@ pnpm install                # 安装根级提交钩子依赖
 常用的开发与检查命令：
 
 ```bash
-pnpm dev          # 启动开发服务器
-pnpm build        # 内容校验 + 类型检查 + 生产构建 + 产物验证
-pnpm check        # 内容校验 + 类型检查 + ESLint + 格式检查（CI 用）
-pnpm validate     # 只校验 content/ 内容是否合法
-pnpm extract      # 重新从 MyResume.pdf 生成 content/
-pnpm typecheck    # 仅类型检查
-pnpm lint         # ESLint
-pnpm format       # Prettier 写入格式化
+pnpm dev             # 启动开发服务器
+pnpm build           # 内容校验 + 类型检查 + 生产构建 + 产物验证
+pnpm check           # 内容校验 + 零硬编码检查 + 类型检查 + ESLint + 格式检查（CI 用）
+pnpm validate        # 只校验 content/ 内容是否合法
+pnpm extract         # 重新从 MyResume.pdf 生成 content/
+pnpm verify:content  # 检查页面是否有硬编码文案（应全部来自 content/）
+pnpm verify:build    # 检查产物：base 前缀、basename、分块、防 FOUC 脚本
+pnpm typecheck       # 仅类型检查
+pnpm lint            # ESLint
+pnpm format          # Prettier 写入格式化
 ```
 
 你也可以进入 `site/` 目录直接执行等价的 `pnpm <script>`。
@@ -113,7 +115,17 @@ pnpm format       # Prettier 写入格式化
 1. **改简历 PDF** → 运行 `pnpm extract` 重新生成 JSON（人工修正规则写在 `extract-pdf.ts` 里，可复现）；
 2. **只补文字内容**（如个人简介、项目详情）→ 直接编辑 `content/` 下的 JSON。
 
-两种方式之后都建议跑一次 `pnpm validate`。内容里的 `TODO:` 是待补占位，上线前应清空。
+两种方式之后都建议跑一次 `pnpm validate`。内容里的 `TODO:` 是待补占位，上线前应清空；
+页面上会把它渲染成醒目的「待补充」提示块，而不是生硬的 `TODO:…` 文本。
+
+### 「零硬编码」是可执行的检查
+
+页面文案必须全部来自 `content/`，这条约定由 `pnpm verify:content` 自动把关：
+它从 `content/` 提取 59 条事实型字符串（姓名、学校、项目名、邮箱等），
+扫描 `src/pages` 与 `src/components`，命中即报错并给出文件与行号。
+
+判据刻意收紧到只报真问题（技术名、注释里的框架名不算），
+因为一个动辄几十条误报的检查很快就会被 ignore 掉。
 
 ### 为什么内容校验放在构建期
 

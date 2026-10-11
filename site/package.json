@@ -12,6 +12,7 @@
     "dev": "vite",
     "build": "tsx scripts/validate-content.ts && tsc --noEmit && vite build && tsx scripts/verify-build.ts",
     "verify:build": "tsx scripts/verify-build.ts",
+    "verify:content": "tsx scripts/verify-content-usage.ts",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "lint": "eslint . --max-warnings 0",
@@ -20,7 +21,7 @@
     "format:check": "prettier --check .",
     "extract": "tsx scripts/extract-pdf.ts",
     "validate": "tsx scripts/validate-content.ts",
-    "check": "tsx scripts/validate-content.ts && tsc --noEmit && eslint . --max-warnings 0 && prettier --check ."
+    "check": "tsx scripts/validate-content.ts && tsx scripts/verify-content-usage.ts && tsc --noEmit && eslint . --max-warnings 0 && prettier --check ."
   },
   "dependencies": {
     "class-variance-authority": "0.7.1",
