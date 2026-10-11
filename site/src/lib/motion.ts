@@ -9,8 +9,14 @@
  */
 import type { Transition, Variants } from 'motion/react';
 
-/** 常用缓动：先快后慢，观感比线性自然 */
-export const EASE_OUT: Transition['ease'] = [0.16, 1, 0.3, 1];
+/**
+ * 常用缓动：先快后慢，观感比线性自然。
+ *
+ * 类型写成具体的四元数组而不是 `Transition['ease']` ——
+ * 后者含 undefined，在 exactOptionalPropertyTypes 下无法赋给
+ * Transition 的可选 ease 属性（"可以缺失"不等于"可以提供 undefined"）。
+ */
+export const EASE_OUT: [number, number, number, number] = [0.16, 1, 0.3, 1];
 
 export const DURATION = {
   fast: 0.15,
