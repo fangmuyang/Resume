@@ -9,11 +9,11 @@
   },
   "scripts": {
     "prepare": "husky",
-    "dev": "pnpm --dir site dev",
-    "build": "pnpm --dir site build",
-    "lint": "pnpm --dir site lint",
-    "typecheck": "pnpm --dir site typecheck",
-    "format": "pnpm --dir site format"
+    "dev": "pnpm --dir site run dev",
+    "build": "pnpm --dir site run build",
+    "lint": "pnpm --dir site run lint",
+    "typecheck": "pnpm --dir site run typecheck",
+    "format": "pnpm --dir site run format"
   },
   "devDependencies": {
     "@commitlint/cli": "19.8.1",
