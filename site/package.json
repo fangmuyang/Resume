@@ -5,18 +5,20 @@
   "type": "module",
   "description": "方睿杰的个人网站：React 19 + TypeScript + Vite 学习项目",
   "engines": {
-    "node": ">=22.12.0",
+    "node": ">=22.18.0",
     "pnpm": ">=10"
   },
   "scripts": {
     "dev": "vite",
-    "build": "tsc --noEmit && vite build",
+    "build": "tsx scripts/validate-content.ts && tsc --noEmit && vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "lint": "eslint . --max-warnings 0",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "extract": "tsx scripts/extract-pdf.ts",
+    "validate": "tsx scripts/validate-content.ts"
   },
   "dependencies": {
     "react": "19.3.0",
@@ -25,19 +27,22 @@
   "devDependencies": {
     "@eslint/js": "9.39.5",
     "@tailwindcss/vite": "4.3.3",
+    "@types/node": "26.6.5",
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
-    "@types/node": "26.6.5",
     "@vitejs/plugin-react": "5.2.0",
     "eslint": "9.39.5",
     "eslint-plugin-react-hooks": "7.1.1",
     "eslint-plugin-react-refresh": "0.5.7",
     "globals": "17.13.0",
+    "pdfjs-dist": "6.4.299",
     "prettier": "3.9.10",
     "prettier-plugin-tailwindcss": "0.8.1",
     "tailwindcss": "4.3.3",
+    "tsx": "4.20.6",
     "typescript": "5.9.3",
     "typescript-eslint": "8.71.1",
-    "vite": "7.3.7"
+    "vite": "7.3.7",
+    "zod": "4.6.5"
   }
 }
