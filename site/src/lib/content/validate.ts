@@ -13,21 +13,34 @@ import {
   postFrontmatterSchema,
   profileSchema,
   projectSchema,
+  resumeAssetSchema,
   resumeSchema,
   skillGroupsSchema,
   type PostMeta,
   type Profile,
   type Project,
   type Resume,
+  type ResumeAsset,
   type SkillGroup,
 } from './schema';
 
 /** 内容文件在 content/ 目录下的相对路径。改文件名只需要改这里。 */
 export const CONTENT_FILES = {
-  profile: 'profile.json',
+  /**
+   * 校验的是**净化副本**，而不是源头 profile.json。
+   *
+   * 因为浏览器侧读的就是它，校验必须对准真正会进入产物的那个文件。
+   * 源头的私密字段由 scripts/build-public-content.ts 负责剥离，
+   * 产物是否真的干净由 scripts/verify-privacy.ts 在构建后实测。
+   */
+  profile: 'profile-public.json',
   resume: 'resume.json',
   skills: 'skills.json',
+  resumeAsset: 'resume-asset.json',
 } as const;
+
+/** 隐私字段的源头文件，只有构建脚本读取它 */
+export const PRIVATE_PROFILE_FILE = 'profile.json';
 
 /** 作品集详情放在这个子目录下，文件名即 slug */
 export const PROJECTS_DIR = 'projects';
@@ -53,6 +66,7 @@ export interface ValidatedContent {
   resume: Resume;
   skillGroups: SkillGroup[];
   projects: Project[];
+  resumeAsset: ResumeAsset;
 }
 
 /** 按 order 升序、再按名称排序，保证渲染顺序稳定 */
@@ -141,6 +155,12 @@ export function validateAllContent(
     `content/${CONTENT_FILES.skills}`,
   );
 
+  const resumeAsset = parseWithContext(
+    resumeAssetSchema,
+    read(CONTENT_FILES.resumeAsset),
+    `content/${CONTENT_FILES.resumeAsset}`,
+  );
+
   const projects = projectPaths.map((path) => validateProject(read(path), `content/${path}`));
 
   // slug 唯一性无法用单个文件内的 schema 表达，必须在集合层面检查 ——
@@ -153,5 +173,11 @@ export function validateAllContent(
     throw new Error(`作品集 slug 重复：${[...new Set(duplicates)].join(', ')}`);
   }
 
-  return { profile, resume, skillGroups, projects: [...projects].sort(byOrderThenName) };
+  return {
+    profile,
+    resume,
+    skillGroups,
+    projects: [...projects].sort(byOrderThenName),
+    resumeAsset,
+  };
 }

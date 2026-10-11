@@ -15,10 +15,13 @@
     "typecheck": "pnpm --dir site run typecheck",
     "format": "pnpm --dir site run format",
     "extract": "pnpm --dir site run extract",
+    "build:posts-index": "pnpm --dir site run build:posts-index",
+    "build:content": "pnpm --dir site run build:content",
     "validate": "pnpm --dir site run validate",
     "check": "pnpm --dir site run check",
     "verify:build": "pnpm --dir site run verify:build",
-    "verify:content": "pnpm --dir site run verify:content"
+    "verify:content": "pnpm --dir site run verify:content",
+    "verify:privacy": "pnpm --dir site run verify:privacy"
   },
   "devDependencies": {
     "@commitlint/cli": "19.8.1",

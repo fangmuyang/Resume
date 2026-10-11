@@ -71,20 +71,35 @@ function collectJsonFiles(dir: string): string[] {
   });
 }
 
-/** 递归取出 JSON 里所有值得检查的字符串值 */
-function collectStrings(value: unknown, out: string[]): void {
+/**
+ * 不需要参与硬编码检查的字段名。
+ *
+ * 理由是"这类值本来就该出现在源码里"：
+ * - `file`：公开资产的 URL 片段（如 `resume.pdf`），组件必须按名字引用它。
+ *
+ * 注意这里按**字段名**排除，而不是把具体值加进白名单 ——
+ * 前者表达的是"这一类字段不是展示文案"，后者会随着新资产慢慢变成一张废纸。
+ */
+const IGNORED_FIELDS = new Set(['file']);
+
+/**
+ * 递归取出 JSON 里所有值得检查的字符串值。
+ * 跳过 IGNORED_FIELDS 里的键，其余按 isFactLike 判断。
+ */
+function collectStrings(value: unknown, out: string[], parentKey: string | null = null): void {
   if (typeof value === 'string') {
+    if (parentKey !== null && IGNORED_FIELDS.has(parentKey)) return;
     if (!value.startsWith('TODO:') && isFactLike(value)) out.push(value);
     return;
   }
 
   if (Array.isArray(value)) {
-    for (const item of value) collectStrings(item, out);
+    for (const item of value) collectStrings(item, out, parentKey);
     return;
   }
 
   if (value !== null && typeof value === 'object') {
-    for (const item of Object.values(value)) collectStrings(item, out);
+    for (const [key, item] of Object.entries(value)) collectStrings(item, out, key);
   }
 }
 

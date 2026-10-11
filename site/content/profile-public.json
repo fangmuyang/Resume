@@ -1,0 +1,34 @@
+{
+  "name": "方睿杰",
+  "aka": "方沐",
+  "headline": "前端开发方向 · 计算机应用专业在读",
+  "bio": "TODO:一句话自我介绍（PDF 里没有，建议 2-3 句，说明你在做什么、关注什么方向）",
+  "location": "TODO:所在城市，例如 杭州",
+  "availability": "寻找前端开发方向实习机会",
+  "avatar": null,
+  "builtWith": "React 19 + TypeScript + Vite",
+  "links": [
+    {
+      "kind": "email",
+      "label": "257028151@qq.com",
+      "value": "mailto:257028151@qq.com",
+      "public": true
+    },
+    {
+      "kind": "github",
+      "label": "github.com/fangmuyang",
+      "value": "https://github.com/fangmuyang",
+      "public": true
+    },
+    {
+      "kind": "website",
+      "label": "www.fangmu.online",
+      "value": "http://www.fangmu.online/",
+      "public": true
+    }
+  ],
+  "privacy": {
+    "showPhone": false,
+    "allowResumeDownload": true
+  }
+}

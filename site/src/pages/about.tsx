@@ -17,10 +17,11 @@ import { formatPeriod } from '@/lib/format';
  * 页面上仅有的字面量是分区标题与图标说明这类结构性文本。
  */
 export default function AboutPage() {
-  // 隐私开关：只有 privacy.showPhone 为 true 时才显示手机号
-  const visibleLinks = profile.links.filter(
-    (link) => link.public && (link.kind !== 'phone' || profile.privacy.showPhone),
-  );
+  /**
+   * 不需要再按 privacy 过滤 links —— 非公开条目在构建期就被剥离了
+   * （见 scripts/build-public-content.ts），浏览器拿不到它们。
+   */
+  const visibleLinks = profile.links;
 
   return (
     <Container className="py-16">

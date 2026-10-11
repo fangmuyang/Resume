@@ -95,9 +95,10 @@ pnpm check           # 内容校验 + 零硬编码检查 + 类型检查 + ESLint
 pnpm validate        # 只校验 content/ 内容是否合法
 pnpm extract         # 重新从 MyResume.pdf 生成 content/
 pnpm build:posts-index  # 重新扫描 MDX frontmatter 生成文章索引
-pnpm build:content   # extract + build:posts-index
+pnpm build:content   # extract + build:posts-index + 生成净化副本
 pnpm verify:content  # 检查页面是否有硬编码文案（应全部来自 content/）
 pnpm verify:build    # 检查产物：base 前缀、basename、分块、防 FOUC 脚本
+pnpm verify:privacy  # 扫描产物，确认私密字段（手机号）没有泄漏
 pnpm typecheck       # 仅类型检查
 pnpm lint            # ESLint
 pnpm format          # Prettier 写入格式化
@@ -136,11 +137,32 @@ pnpm format          # Prettier 写入格式化
 ### 「零硬编码」是可执行的检查
 
 页面文案必须全部来自 `content/`，这条约定由 `pnpm verify:content` 自动把关：
-它从 `content/` 提取 59 条事实型字符串（姓名、学校、项目名、邮箱等），
-扫描 `src/pages` 与 `src/components`，命中即报错并给出文件与行号。
+它从 `content/` 提取事实型字符串，扫描 `src/pages` 与 `src/components`，
+命中即报错并给出文件与行号。
 
-判据刻意收紧到只报真问题（技术名、注释里的框架名不算），
+判据刻意收紧到只报真问题（技术名、注释里的框架名、公开资产的 URL 片段不算），
 因为一个动辄几十条误报的检查很快就会被 ignore 掉。
+
+### 隐私边界在「哪些文件进入产物」这一层
+
+最初的做法是条件渲染：组件里读 `profile.privacy.showPhone`，为 false 就不渲染手机号。
+`pnpm verify:privacy` 一跑就拦下了：
+
+```
+✗ 发现 1 处隐私泄漏：
+  site\dist\assets\index-*.js  包含受隐私开关保护的 phone（11 位号码）
+```
+
+根因有两个，都值得记住：
+
+1. **条件渲染只能决定"显示什么"，不能决定"传输什么"。**
+   数据在 bundle 里，打开 DevTools 就能搜到。
+2. **通配 glob 会打包它匹配到的所有文件。**
+   即便代码读的是 `profile-public.json`，`import.meta.glob('content/**/*.json')`
+   仍然会把含手机号的 `profile.json` 一起内联进产物。
+
+所以现在：构建期生成净化副本（`build-public-content.ts`），
+加载器对每个文件用**精确 glob**，再由 `verify:privacy` 在构建后实测产物。
 
 ### 为什么内容校验放在构建期
 

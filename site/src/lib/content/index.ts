@@ -1,89 +1,102 @@
 /**
  * 内容加载器。
  *
- * 数据流：
- *   content/*.json
- *     → 构建期：vite.config.ts 的 content-guard 插件用 Zod 校验，失败即中断构建
- *     → import.meta.glob（Vite 静态收集，JSON 内联进产物）
- *     → 推导出的 TS 类型
+ * ## 数据流
  *
- * 为什么这里**不做**运行时校验（一个值得记住的取舍）：
- * 校验只在构建期有意义。若把它也放进应用代码，Zod 和全部 schema 都会被打进
- * 浏览器产物 —— 实测 gzip 从 70 KB 涨到 101 KB，而这些代码在运行时永远不会
- * 拒绝任何数据（构建期已经拦住了）。所以 Zod 是 devDependency。
+ * ```
+ * content/*.json          源头（可能含私密字段）
+ *   → 构建期脚本生成净化副本 / 索引（build-public-content / build-posts-index）
+ *   → 构建期 Zod 校验（validate-content + vite 插件 content-guard）
+ *   → import.meta.glob 内联进产物
+ *   → 本模块给出类型安全的数据
+ * ```
  *
- * 代价：如果内容绕过 content-guard 插件被内联（例如换成别的构建工具），
- * 这里不会报错。本项目所有构建都走 `pnpm build`，该风险可接受。
- */
-import type { PostMeta, Profile, Project, Resume, SkillGroup } from './schema';
+ * ## 两条重要的设计决定
+ *
+ * **一、浏览器读的是净化副本，不是源头。**
+ * `profile.json` 含手机号等私密字段。最初的做法是"组件里按 privacy 开关决定
+ * 是否渲染"，但实测被 `pnpm verify:privacy` 拦下：数据在 bundle 里，
+ * 渲染与否无关紧要，打开 DevTools 就能搜到。
+ * 条件渲染只能决定"显示什么"，不能决定"传输什么"。
+ *
+ * **二、每个文件用精确的 glob，不用 `content/**\/*.json`。**
+ * 通配 glob 会把它匹配到的**所有**文件内联进产物 —— 包括不该公开的源文件。
+ * 这是一次真实的教训：隐私边界必须在"哪些文件进入产物"这一层划定。
+ * 代价是新增内容文件时要同步 PUBLIC_ENTRY_MODULES，这个显式约束是值得的。
+ */ import type { PostMeta, Profile, Project, Resume, ResumeAsset, SkillGroup } from './schema';
 
 /**
- * eager + import:'default' 把 JSON 解析成对象并内联进产物，没有运行时请求。
- * 路径相对本文件：src/lib/content/ → 上溯四级到仓库根，再进 content/。
+ * 公开条目：每个文件单独 glob。
+ *
+ * WHY 不合并成一个 glob：合并就无法排除 `profile.json` 这类源头文件。
  */
-const globbed = import.meta.glob('../../../content/**/*.json', {
-  eager: true,
-  import: 'default',
-}) as Record<string, unknown>;
+const PUBLIC_ENTRY_MODULES = {
+  profile: import.meta.glob('../../../content/profile-public.json', {
+    eager: true,
+    import: 'default',
+  }),
+  resume: import.meta.glob('../../../content/resume.json', { eager: true, import: 'default' }),
+  skills: import.meta.glob('../../../content/skills.json', { eager: true, import: 'default' }),
+  resumeAsset: import.meta.glob('../../../content/resume-asset.json', {
+    eager: true,
+    import: 'default',
+  }),
+  projects: import.meta.glob('../../../content/projects/*.json', {
+    eager: true,
+    import: 'default',
+  }),
+  postIndex: import.meta.glob('../../../content/posts-index.json', {
+    eager: true,
+    import: 'default',
+  }),
+} as const;
 
 /**
- * 文章用**非 eager** 的 glob：MDX 会被编译成 React 组件，
- * 每篇都不小（含代码高亮产物），全部内联进主包会拖慢首屏。
- *
- * `import: '*'` 拿到整个模块命名空间，其中 default 是文章正文组件。
- *
- * 注意：**元数据不从这里取**。frontmatter 导出的对象没有经过 Zod 校验，
- * 若在运行时校验就得把 Zod 打进产物。元数据统一走构建期生成的
- * content/posts-index.json（见 schema/post.ts 的说明）。
+ * 文章正文：**非 eager**，MDX 会编译成含代码高亮的 React 组件，
+ * 每篇都不小，全部内联进主包会拖慢首屏。
  */
-const postModules = import.meta.glob<{
-  default: React.ComponentType;
-}>('../../../content/posts/*.mdx', { import: '*' });
+const postModules = import.meta.glob<{ default: React.ComponentType }>(
+  '../../../content/posts/*.mdx',
+  { import: '*' },
+);
 
-/** glob 的 key 是绝对风格路径，这里归一化成 content/ 下的相对路径 */
-function toContentRelativePath(key: string): string | undefined {
-  return key.split('/content/')[1];
-}
+/** 取某个 glob 的唯一结果；匹配数量不是 1 就报错，避免静默取到错误的文件 */
+function singleEntry(modules: Record<string, unknown>, label: string): unknown {
+  const values = Object.values(modules);
 
-const entries = new Map<string, unknown>();
-
-for (const [key, value] of Object.entries(globbed)) {
-  const relativePath = toContentRelativePath(key);
-  if (relativePath !== undefined) entries.set(relativePath, value);
-}
-
-function requireEntry(fileName: string): unknown {
-  const value = entries.get(fileName);
-
-  if (value === undefined) {
-    throw new Error(`找不到内容文件 content/${fileName}。请先运行 \`pnpm extract\` 生成内容。`);
+  if (values.length !== 1) {
+    throw new Error(
+      `内容文件 ${label} 匹配到 ${values.length} 个，期望 1 个。请检查 content/ 下的文件名。`,
+    );
   }
 
-  return value;
+  return values[0];
 }
 
 /**
- * import.meta.glob 不保留 JSON 的结构类型（返回 unknown），
- * 所以这里断言到 schema 推导出的类型。
- *
- * 这个断言的安全性由构建期的 content-guard 插件保证 ——
- * 它是"类型来自运行时校验"这一链条里唯一的单点，因此必须存在。
+ * 断言的说明：`import.meta.glob` 不保留 JSON 的结构类型，
+ * 所以这里把结果断言到 schema 推导出的类型。
+ * 这个断言的安全性由构建期的 content-guard 插件保证（它用同一套 Zod schema 校验）。
  */
-export const profile = requireEntry('profile.json') as Profile;
+export const profile = singleEntry(PUBLIC_ENTRY_MODULES.profile, 'profile-public.json') as Profile;
 
-export const resume = requireEntry('resume.json') as Resume;
+export const resume = singleEntry(PUBLIC_ENTRY_MODULES.resume, 'resume.json') as Resume;
 
-export const skillGroups = requireEntry('skills.json') as SkillGroup[];
+export const skillGroups = singleEntry(PUBLIC_ENTRY_MODULES.skills, 'skills.json') as SkillGroup[];
+
+/** 简历 PDF 等公开资产的声明（文件名、标签、体积） */
+export const resumeAsset = singleEntry(
+  PUBLIC_ENTRY_MODULES.resumeAsset,
+  'resume-asset.json',
+) as ResumeAsset;
 
 /** 按 order 升序、再按名称排序，保证渲染顺序稳定 */
 function byOrderThenName(a: Project, b: Project): number {
   return a.order - b.order || a.name.localeCompare(b.name, 'zh-Hans-CN');
 }
 
-export const projects = [...entries.keys()]
-  .filter((path) => path.startsWith('projects/'))
-  .sort()
-  .map((path) => requireEntry(path) as Project)
+export const projects = Object.values(PUBLIC_ENTRY_MODULES.projects)
+  .map((value) => value as Project)
   .sort(byOrderThenName);
 
 /** 首页精选：由数据里的 featured 决定，而不是靠数组下标 */
@@ -119,13 +132,15 @@ export const postModulesBySlug: Record<string, () => Promise<unknown>> = Object.
 );
 
 /**
- * 文章元数据（含阅读时长），来自构建期生成的 content/posts-index.json。
+ * 文章元数据（含阅读时长），来自构建期生成的 posts-index.json。
  *
  * 为什么不读 MDX 模块导出的 frontmatter：那个对象没有经过 Zod 校验，
  * 运行时校验会把 Zod 打进产物；而用 `?raw` 读源文件又会让 MDX 插件
  * 把原始文本当代码编译。构建期生成索引是唯一干净的路子。
  */
-const postIndex = requireEntry('posts-index.json') as { posts: PostMeta[] };
+const postIndex = singleEntry(PUBLIC_ENTRY_MODULES.postIndex, 'posts-index.json') as {
+  posts: PostMeta[];
+};
 
 /** 全部文章元数据，已按日期倒序（排序在构建期完成） */
 export const postMetas: PostMeta[] = postIndex.posts;
@@ -155,4 +170,4 @@ export const postTags: string[] = (() => {
 })();
 
 // 类型再导出，方便组件只从 '@/lib/content' 一个入口取类型
-export type { PostMeta, Profile, Project, Resume, SkillGroup };
+export type { PostMeta, Profile, Project, Resume, ResumeAsset, SkillGroup };
