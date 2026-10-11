@@ -2,11 +2,48 @@
 
 > 个人网站学习项目 · React 19 + TypeScript + Vite
 > 内容来源：`MyResume.pdf`（1 页中文简历，Chromium/Skia 打印导出）
-> 状态：**阶段 0、1 已完成并验证**，等待补充素材后进入阶段 2
+> 状态：**阶段 0、1、2 已完成并验证**，等待补充素材后进入阶段 3
 
 ---
 
 ## 0. 阶段完成记录
+
+### 阶段 2 · 路由 + 布局 + 暗黑模式 + 响应式（已完成）
+
+| 项目     | 结果                                                                                                                                        |
+| -------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| 路由     | React Router 7 数据路由，7 个路由（6 页面 + 404），全部懒加载，路由级错误边界                                                               |
+| 布局     | 根布局 + Header（桌面导航 / 移动端抽屉）+ Footer，响应式栅格                                                                                |
+| 主题     | Zustand 管理，支持 light/dark/system，跟随系统变化，并尊重 prefers-reduced-motion                                                           |
+| 设计系统 | Button（cva 变体）/ Card / Badge / Container / Slot，cn() = clsx + tailwind-merge                                                           |
+| 动画     | Motion 做路由切换过渡，参数集中在 lib/motion.ts                                                                                             |
+| 分包     | vendor-react 213.5 KB(gzip 66.4) · vendor-router 99.2(33.7) · vendor-motion 96.8(32.2) · vendor-state 0.7 · 应用 88.1(31.1) · CSS 18.3(4.4) |
+| 验证结果 | validate ✓ typecheck ✓ lint ✓ format ✓ build ✓ verify:build ✓                                                                               |
+
+**阶段 2 解决的问题与踩坑记录**
+
+1. **FOUC（首屏闪白）。** 若等 React 挂载后再加 `.dark` 类，用户会看到一瞬间白色。
+   解法是 `index.html` 里的**阻塞式**引导脚本先定主题，Zustand store 读取既成事实再接续管理。
+   脚本刻意写成 ES5 并包 try/catch —— 主题引导不能阻塞整页渲染。
+2. **`basename` 与 `base` 必须同源。** 路由表用 `import.meta.env.BASE_URL` 推导，
+   与 `vite.config.ts` 的 `base` 共用一处定义，避免"改了 base 忘了 basename"。
+   并加 `verify:build` 在构建后实测这一点。
+3. **在 effect 里同步 setState 是反模式。** 移动端抽屉原本用
+   `useEffect(() => setOpen(false), [pathname])` 收起，ESLint 的
+   `react-hooks/set-state-in-effect` 直接报错。改用 **key 重置状态**：
+   父组件传 `key={pathname}`，路由一变组件重挂载、状态自然归零，零 effect 零额外渲染。
+4. **Fast Refresh 要求模块只导出组件。** `buttonVariants` 与 `Button` 同文件会触发
+   `react-refresh/only-export-components`，导致热更新退化成整页刷新。拆成两个文件。
+5. **`exactOptionalPropertyTypes` 会拦下 `ref` 类型不匹配。** Slot 最初声明
+   `ref?: Ref<HTMLElement>` 与按钮的 `Ref<HTMLButtonElement>` 冲突；
+   改成 `ref?: Ref<unknown> | undefined` 才正确（`| undefined` 不能省）。
+6. **vendor 分包规则的陷阱。** `manualChunks: { 'vendor-react': ['react', 'react-dom'] }`
+   看着对，实测 `vendor-react` 只有 4 KB —— 因为 `react-dom/client` 与
+   `react/jsx-runtime` 没被规则覆盖，全掉进了主 chunk。补全入口后才是真实的 213 KB。
+   教训：分包配置必须**用实测产物验证**，不能凭直觉相信。
+7. **不做无依据的优化。** 主 chunk 一度是 499 KB，我没有直接"优化"，
+   而是先分包归因：确认 88 KB 的应用 chunk 里是内联的内容 JSON、图标与少量库代码，
+   没有浪费，于是停手。图标已确认被正确 tree-shake（未使用的图标名都不在产物里）。
 
 ### 阶段 1 · PDF → 内容管道 + Zod 类型系统（已完成）
 
@@ -48,13 +85,14 @@
 
 ### 本机环境问题（与项目配置无关，但会阻塞命令）
 
-| 问题                                 | 症状                                                     | 处理                                                |
-| ------------------------------------ | -------------------------------------------------------- | --------------------------------------------------- |
-| Node ESM 无法穿过 pnpm junction      | `Cannot find package 'rollup'`，而文件就在磁盘上         | `site/pnpm-workspace.yaml` 设 `nodeLinker: hoisted` |
-| 受限沙箱拒绝管道 stdio 的 spawn      | esbuild 报 `spawn EPERM`，`vite build` / `vitest` 全失败 | 在具备正常进程权限的终端运行构建与测试              |
-| MSYS2 `env.exe` / `sh.exe` 崩溃      | `couldn't create signal pipe`，`git commit` 失败         | 在正常终端提交；项目侧钩子配置本身正确              |
-| `.npmrc` 等无 BOM 文件被按 ANSI 解码 | 中文注释被拆坏并吞掉后面的配置项                         | 这类文件只写 ASCII 注释                             |
-| `.NET` 相对路径取的是进程 cwd        | 脚本里 `Set-Location` 后写文件仍落到仓库根               | 操作文件一律用绝对路径                              |
+| 问题                                 | 症状                                                     | 处理                                                                           |
+| ------------------------------------ | -------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| Node ESM 无法穿过 pnpm junction      | `Cannot find package 'rollup'`，而文件就在磁盘上         | `site/pnpm-workspace.yaml` 设 `nodeLinker: hoisted`                            |
+| 受限沙箱拒绝管道 stdio 的 spawn      | esbuild 报 `spawn EPERM`，`vite build` / `vitest` 全失败 | 在具备正常进程权限的终端运行构建与测试                                         |
+| MSYS2 `env.exe` / `sh.exe` 崩溃      | `couldn't create signal pipe`，`git commit` 失败         | 在正常终端提交；项目侧钩子配置本身正确                                         |
+| `.npmrc` 等无 BOM 文件被按 ANSI 解码 | 中文注释被拆坏并吞掉后面的配置项                         | 这类文件只写 ASCII 注释                                                        |
+| `.NET` 相对路径取的是进程 cwd        | 脚本里 `Set-Location` 后写文件仍落到仓库根               | 操作文件一律用绝对路径                                                         |
+| 沙箱内无法监听端口                   | `vite preview` / `vite dev` 起不来，端口无监听           | 视觉与交互验证留给阶段 9 的 Playwright；当前用产物级验证（`verify:build`）替代 |
 
 ---
 
@@ -142,7 +180,7 @@ Zustand(theme/search/tag) ──────────────▶  React R
 | ------ | ------------------------------- | ------------------------------------------------------------------------- | --------------------------------------------------------------------- | ------- |
 | **0**  | 脚手架 + 工程规范 + Git         | Vite、TS strict、ESLint 9、Prettier、Husky、lint-staged、commitlint、pnpm | lint/typecheck/build 全绿；提交历史规范                               | ✅ 完成 |
 | **1**  | PDF → 内容管道 + Zod 类型系统   | pdfjs-dist、Zod、内容/代码分离                                            | `pnpm extract` 可重跑产出 `content/*.json`；schema 校验失败时构建报错 | ✅ 完成 |
-| **2**  | 路由 + 布局 + 暗黑模式 + 响应式 | React Router、shadcn/ui、Zustand、Framer Motion                           | 6 个路由可达；暗色刷新后保持；移动端无横向滚动                        | ⬜      |
+| **2**  | 路由 + 布局 + 暗黑模式 + 响应式 | React Router、shadcn/ui、Zustand、Framer Motion                           | 6 个路由可达；暗色刷新后保持；移动端无横向滚动                        | ✅ 完成 |
 | **3**  | 首页 + 关于我                   | 组件设计、设计令牌、动画                                                  | 内容全部来自 `content/`，零硬编码文案                                 | ⬜      |
 | **4**  | 项目/作品集 + 标签筛选          | 动态路由、筛选状态、卡片动效                                              | 筛选可用；详情页可直接刷新打开                                        | ⬜      |
 | **5**  | 文章/笔记（MDX）                | MDX、代码高亮、构建期内容收集                                             | MDX 内可嵌入 React 组件并正常渲染                                     | ⬜      |

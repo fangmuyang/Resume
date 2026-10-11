@@ -15,7 +15,9 @@
     "typecheck": "pnpm --dir site run typecheck",
     "format": "pnpm --dir site run format",
     "extract": "pnpm --dir site run extract",
-    "validate": "pnpm --dir site run validate"
+    "validate": "pnpm --dir site run validate",
+    "check": "pnpm --dir site run check",
+    "verify:build": "pnpm --dir site run verify:build"
   },
   "devDependencies": {
     "@commitlint/cli": "19.8.1",

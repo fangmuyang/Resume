@@ -11,15 +11,20 @@
 
 ## 技术栈
 
-| 层次 | 选型                             | 在本项目中的作用            |
-| ---- | -------------------------------- | --------------------------- |
-| 核心 | React 19 · TypeScript 5.9        | 组件与类型系统              |
-| 构建 | Vite 7                           | 开发服务器与生产构建        |
-| 样式 | Tailwind CSS v4                  | 原子化样式，配置写在 CSS 里 |
-| 质量 | ESLint 9 · Prettier 3            | 静态检查与格式化            |
-| 提交 | Husky · lint-staged · commitlint | 本地提交卡口 + 提交信息规范 |
+| 层次 | 选型                             | 在本项目中的作用                          |
+| ---- | -------------------------------- | ----------------------------------------- |
+| 核心 | React 19 · TypeScript 5.9        | 组件与类型系统                            |
+| 构建 | Vite 7                           | 开发服务器、生产构建与 vendor 分包        |
+| 路由 | React Router 7（数据路由）       | 七个路由、懒加载、路由级错误边界          |
+| 状态 | Zustand 5                        | 主题状态（暗黑模式）                      |
+| 动画 | Motion（Framer Motion）          | 路由切换过渡，尊重 prefers-reduced-motion |
+| 样式 | Tailwind CSS v4 · cva · clsx     | 设计令牌、变体与类名合并                  |
+| 图标 | lucide-react                     | 图标（按需 tree-shaking）                 |
+| 内容 | Zod 4（仅构建期）· pdfjs-dist    | 内容校验与 PDF 提取，均不进入浏览器产物   |
+| 质量 | ESLint 9 · Prettier 3            | 静态检查与格式化                          |
+| 提交 | Husky · lint-staged · commitlint | 本地提交卡口 + 提交信息规范               |
 
-后续阶段会依次加入 React Router、Zustand、TanStack Query、Zod、MDX、Fuse.js、
+后续阶段会依次加入 TanStack Query、MDX、Fuse.js、React Hook Form、MSW、
 Vitest、Playwright、PWA 与 GitHub Actions，详见路线图。
 
 ## 目录结构
@@ -38,18 +43,25 @@ Vitest、Playwright、PWA 与 GitHub Actions，详见路线图。
 ├── site/                 # 业务工程（React + TS + Vite）
 │   ├── scripts/
 │   │   ├── extract-pdf.ts      # PDF → content/ 的可复现管道
-│   │   └── validate-content.ts # 内容校验 CLI
+│   │   ├── validate-content.ts # 内容校验 CLI
+│   │   └── verify-build.ts     # 产物验证（base 前缀、basename、分块、防 FOUC）
 │   ├── src/
-│   │   ├── lib/content/
-│   │   │   ├── schema/   # Zod schema（类型唯一真相来源）
-│   │   │   ├── validate.ts     # 校验逻辑（构建期与 CLI 共用）
-│   │   │   └── index.ts        # 类型安全的内容加载器
+│   │   ├── app/          # 站点外壳：路由表、根布局、错误边界、页面过渡
+│   │   ├── pages/        # 按路由切分的页面组件（懒加载）
+│   │   ├── features/     # 垂直切片，如 theme（含 store 与切换按钮）
+│   │   ├── components/
+│   │   │   ├── ui/       # 设计系统基座：Button / Card / Badge / Container / Slot
+│   │   │   └── layout/   # Header / Footer / 移动端抽屉
+│   │   ├── lib/
+│   │   │   ├── content/  # Zod schema、校验逻辑、类型安全加载器
+│   │   │   ├── motion.ts # 动画参数集中管理
+│   │   │   ├── navigation.ts   # 导航结构（桌面与移动端共用）
+│   │   │   └── utils.ts  # cn()：clsx + tailwind-merge
 │   │   ├── main.tsx      # 应用入口
-│   │   ├── App.tsx       # 根组件（阶段 2 后替换为路由表）
 │   │   └── styles/index.css    # Tailwind v4 入口 + 设计令牌
 │   ├── eslint.config.js  # ESLint 9 扁平配置
 │   ├── tsconfig.json     # 严格模式全开
-│   └── vite.config.ts    # 含构建期内容校验插件 content-guard
+│   └── vite.config.ts    # 内容校验插件 content-guard + vendor 分包
 ├── .husky/               # Git 提交钩子
 ├── lint-staged.config.js
 └── commitlint.config.js
@@ -68,7 +80,8 @@ pnpm install                # 安装根级提交钩子依赖
 
 ```bash
 pnpm dev          # 启动开发服务器
-pnpm build        # 内容校验 + 类型检查 + 生产构建
+pnpm build        # 内容校验 + 类型检查 + 生产构建 + 产物验证
+pnpm check        # 内容校验 + 类型检查 + ESLint + 格式检查（CI 用）
 pnpm validate     # 只校验 content/ 内容是否合法
 pnpm extract      # 重新从 MyResume.pdf 生成 content/
 pnpm typecheck    # 仅类型检查
@@ -77,6 +90,21 @@ pnpm format       # Prettier 写入格式化
 ```
 
 你也可以进入 `site/` 目录直接执行等价的 `pnpm <script>`。
+
+## 路由与主题
+
+七个路由：`/`、`/about`、`/projects`、`/posts`、`/resume`、`/contact`，以及兜底的 404。
+每个页面都是懒加载的独立 chunk，路由级错误边界挂在根路由上。
+
+两个容易踩的点已在代码里处理：
+
+- **`basename` 必须与 Vite 的 `base` 一致。** 路由表用 `import.meta.env.BASE_URL`
+  推导 basename，与 `vite.config.ts` 的 `base` 共用同一个来源，
+  不会出现"改了 base 忘了改 basename"导致线上路由全挂。
+  `pnpm verify:build` 会检查这一点。
+- **暗黑模式不能等 React 挂载后再切换**，否则首屏会闪一下白色（FOUC）。
+  `index.html` 里有一段阻塞式引导脚本先定好主题类名，
+  Zustand 的 theme store 再接管后续切换。`verify:build` 也会检查这段脚本存在。
 
 ## 内容工作流
 
