@@ -1,0 +1,22 @@
+# Normalize line endings so the repository behaves the same on every OS.
+# Without this, Git's core.autocrlf on Windows rewrites shell scripts to CRLF,
+# which makes them fail under `sh` (husky's hooks are sh scripts).
+
+* text=auto eol=lf
+
+# Shell scripts must keep LF endings.
+*.sh text eol=lf
+.husky/* text eol=lf
+
+# Binary assets must never be converted.
+*.pdf binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+
+# Keep lockfiles out of diffs as generated artifacts.
+pnpm-lock.yaml -diff linguist-generated
