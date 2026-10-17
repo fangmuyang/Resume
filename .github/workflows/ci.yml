@@ -1,34 +1,30 @@
-/**
- * CI 主流程：内容校验、类型检查、Lint、单元测试、构建、E2E。
- *
- * ## 四个设计决定
- *
- * ### 一、用 `pnpm/action-setup` 而不是 `npm install -g pnpm`
- *
- * 它会读根 `package.json` 的 `packageManager` 字段并缓存 store。
- * 版本写死在 `package.json` 里，本地与 CI 不会跑出不同的 pnpm。
- *
- * ### 二、校验与 E2E 分成两个 job
- *
- * `verify` 快（约 1 分钟），`e2e` 慢（含浏览器安装与构建，约 3 分钟）。
- * 分开之后：校验失败会**立刻**给反馈；两个 job 并行，总时长由慢的决定。
- *
- * `e2e` 仍然 `needs: verify` —— 内容校验或类型检查都过不了时，
- * 再花三分钟跑 E2E 没有意义。
- *
- * ### 三、`--frozen-lockfile` 不能省
- *
- * 默认行为是"锁文件与 package.json 不一致时自动更新锁文件"，
- * 在 CI 上这意味着**依赖可能与你本地不同**，构建结果就不可复现了。
- * 加上这个参数，不一致会直接失败，逼你先把锁文件提交好。
- *
- * ### 四、Node 版本用 `node-version` 而不是 `node-version-file`
- *
- * `node-version-file` 只认 `.nvmrc` / `.node-version` 这类文件，
- * **不读 `package.json` 的 `engines`**。写成 `node-version-file: site/package.json`
- * 会让 setup-node 找不到版本文件而失败（或静默回退到默认版本）。
- * 这里用 `22.18` 与 `engines` 的下限保持一致。
- */
+# CI 主流程：内容校验、类型检查、Lint、单元测试、构建、E2E。
+#
+# 四个设计决定：
+#
+# 一、用 pnpm/action-setup 而不是 npm install -g pnpm
+#     它会读根 package.json 的 packageManager 字段并缓存 store。
+#     版本写死在 package.json 里，本地与 CI 不会跑出不同的 pnpm。
+#
+# 二、校验与 E2E 分成两个 job
+#     verify 快（约 1 分钟），e2e 慢（含浏览器安装与构建，约 3 分钟）。
+#     分开之后：校验失败会立刻给反馈；两个 job 并行，总时长由慢的决定。
+#     e2e 仍然 needs: verify —— 内容校验或类型检查都过不了时，
+#     再花三分钟跑 E2E 没有意义。
+#
+# 三、--frozen-lockfile 不能省
+#     默认行为是"锁文件与 package.json 不一致时自动更新锁文件"，
+#     在 CI 上这意味着依赖可能与你本地不同，构建结果就不可复现了。
+#     加上这个参数，不一致会直接失败，逼你先把锁文件提交好。
+#
+# 四、Node 版本用 node-version 而不是 node-version-file
+#     node-version-file 只认 .nvmrc / .node-version 这类文件，
+#     不读 package.json 的 engines。写成 node-version-file: site/package.json
+#     会让 setup-node 找不到版本文件而失败（或静默回退到默认版本）。
+#
+# 注意：YAML 的注释只能是 #。这个文件第一版以 TypeScript 风格的 /** 开头，
+# 导致整个文件无法解析、GitHub 一个工作流都没注册（Actions 页面全空）。
+# 改配置时请用 yarn 之类无关工具验证语法，别只靠肉眼。
 name: CI
 
 on:

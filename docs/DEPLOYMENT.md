@@ -26,10 +26,10 @@ https://<用户名>.github.io/<仓库名>/
 
 本项目默认配置就是这个形态：
 
-| 配置项             | 值                                    | 位置                                       |
-| ------------------ | ------------------------------------- | ------------------------------------------ |
-| 站点地址           | `https://fangmuyang.github.io/resume` | `site/src/lib/seo/site-config.ts` 的默认值 |
-| 资源前缀（`base`） | `/resume/`                            | 由上面的地址**推导**，不单独配置           |
+| 配置项               | 值                                      | 位置                                         |
+| -------------------- | --------------------------------------- | -------------------------------------------- |
+| 站点地址             | `https://fangmuyang.github.io/resume` | `site/src/lib/seo/site-config.ts` 的默认值 |
+| 资源前缀（`base`） | `/resume/`                            | 由上面的地址**推导**，不单独配置       |
 
 **如果仓库名不是 `resume`**，改 `site-config.ts` 里的默认值即可 ——
 资源前缀、canonical、sitemap、manifest 的 scope 都会跟着变。
@@ -57,8 +57,8 @@ https://<用户名>.github.io/<仓库名>/
 
 自定义域名部署时，**资源前缀必须变成 `/`**：
 
-| 形态       | 站点地址                              | 资源前缀   |
-| ---------- | ------------------------------------- | ---------- |
+| 形态       | 站点地址                                | 资源前缀     |
+| ---------- | --------------------------------------- | ------------ |
 | 项目站点   | `https://fangmuyang.github.io/resume` | `/resume/` |
 | 自定义域名 | `https://fangmu.online`               | `/`        |
 
@@ -73,10 +73,9 @@ https://<用户名>.github.io/<仓库名>/
 1. **Settings → Secrets and variables → Actions → Variables**
    新增变量：
 
-   | 名称       | 值                      |
-   | ---------- | ----------------------- |
+   | 名称         | 值                        |
+   | ------------ | ------------------------- |
    | `SITE_URL` | `https://fangmu.online` |
-
 2. **Settings → Pages → Custom domain** 填入 `fangmu.online` 并保存。
 
    > 保存后 GitHub 会在构建产物里查找 `CNAME` 文件。
@@ -84,20 +83,19 @@ https://<用户名>.github.io/<仓库名>/
    > `actions/configure-pages` 会依据 Pages 设置处理域名绑定。
    > 如果你想让域名配置也进入版本管理，可以在 `site/public/CNAME`
    > 里写入 `fangmu.online`（一行、无协议前缀），它会随构建产物一起发布。
-
+   >
 3. 在域名服务商处配置 DNS。
 
-   | 记录类型 | 主机记录 | 记录值                 |
-   | -------- | -------- | ---------------------- |
-   | A        | `@`      | `185.199.108.153`      |
-   | A        | `@`      | `185.199.109.153`      |
-   | A        | `@`      | `185.199.110.153`      |
-   | A        | `@`      | `185.199.111.153`      |
-   | CNAME    | `www`    | `fangmuyang.github.io` |
+   | 记录类型 | 主机记录 | 记录值                   |
+   | -------- | -------- | ------------------------ |
+   | A        | `@`    | `185.199.108.153`      |
+   | A        | `@`    | `185.199.109.153`      |
+   | A        | `@`    | `185.199.110.153`      |
+   | A        | `@`    | `185.199.111.153`      |
+   | CNAME    | `www`  | `fangmuyang.github.io` |
 
    四个 A 记录是 GitHub Pages 的官方地址，配置多个是为了就近解析与容错。
    只用其中一个也能工作，但可用性会下降。
-
 4. 等待 DNS 生效（几分钟到 24 小时），回到 Pages 设置页勾选
    **Enforce HTTPS**。
 
@@ -200,16 +198,16 @@ dist/
 
 ## 4. 排查清单
 
-| 症状                                | 最可能的原因                           | 怎么确认                                                         |
-| ----------------------------------- | -------------------------------------- | ---------------------------------------------------------------- |
-| 整站白屏、Console 全是 404          | `base` 与部署前缀不一致                | `pnpm verify:build` 会打印推导出的前缀                           |
-| 首页正常，深层路由刷新 404          | 每路由 HTML 入口没生成                 | `pnpm verify:seo` 检查入口齐备性；确认构建里含 `build-prerender` |
-| 本地 200、线上 404                  | 正常现象（见 3.2）                     | 用 `pnpm test:e2e` 验证深层路由                                  |
-| PWA 装上后打不开                    | manifest 的 `scope` / `start_url` 不对 | `cat dist/manifest.webmanifest`，应等于资源前缀                  |
-| canonical 指向旧域名                | `SITE_URL` 变量没设或没生效            | `pnpm verify:seo` 会对比 sitemap 与配置                          |
-| 社交分享预览没有图/描述             | 抓取器不执行 JS（见 3.2 限制二）       | 属已知限制                                                       |
-| Actions 部署失败在 `deploy-pages`   | Pages 的 Source 不是 "GitHub Actions"  | Settings → Pages 检查                                            |
-| Actions 报 `--frozen-lockfile` 失败 | `package.json` 与锁文件不一致          | 本地跑 `pnpm install` 并提交锁文件                               |
+| 症状                                  | 最可能的原因                               | 怎么确认                                                             |
+| ------------------------------------- | ------------------------------------------ | -------------------------------------------------------------------- |
+| 整站白屏、Console 全是 404            | `base` 与部署前缀不一致                  | `pnpm verify:build` 会打印推导出的前缀                             |
+| 首页正常，深层路由刷新 404            | 每路由 HTML 入口没生成                     | `pnpm verify:seo` 检查入口齐备性；确认构建里含 `build-prerender` |
+| 本地 200、线上 404                    | 正常现象（见 3.2）                         | 用 `pnpm test:e2e` 验证深层路由                                    |
+| PWA 装上后打不开                      | manifest 的 `scope` / `start_url` 不对 | `cat dist/manifest.webmanifest`，应等于资源前缀                    |
+| canonical 指向旧域名                  | `SITE_URL` 变量没设或没生效              | `pnpm verify:seo` 会对比 sitemap 与配置                            |
+| 社交分享预览没有图/描述               | 抓取器不执行 JS（见 3.2 限制二）           | 属已知限制                                                           |
+| Actions 部署失败在 `deploy-pages`   | Pages 的 Source 不是 "GitHub Actions"      | Settings → Pages 检查                                               |
+| Actions 报 `--frozen-lockfile` 失败 | `package.json` 与锁文件不一致            | 本地跑 `pnpm install` 并提交锁文件                                 |
 
 所有守卫都可以单独运行：
 

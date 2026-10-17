@@ -28,7 +28,8 @@
     "verify:content": "pnpm --dir site run verify:content",
     "verify:privacy": "pnpm --dir site run verify:privacy",
     "verify:search": "pnpm --dir site run verify:search",
-    "verify:seo": "pnpm --dir site run verify:seo"
+    "verify:seo": "pnpm --dir site run verify:seo",
+    "verify:workflows": "pnpm --dir site run verify:workflows"
   },
   "devDependencies": {
     "@commitlint/cli": "19.8.1",

@@ -1,44 +1,34 @@
-/**
- * 部署到 GitHub Pages。
- *
- * ## 为什么不用 `gh-pages` 分支
- *
- * 老做法是把构建产物推到 `gh-pages` 分支再让 Pages 读取。
- * 那需要仓库写权限、会污染提交历史，而且每次部署都产生一个二进制提交。
- *
- * 现在用官方的 Pages 流程：`upload-pages-artifact` + `deploy-pages`。
- * 产物作为 workflow artifact 上传，由 Pages 服务直接发布 ——
- * 不需要写仓库、历史干净，回滚就是在 Actions 里重新跑一次历史部署。
- *
- * ## 站点地址由仓库变量决定，而它同时决定资源前缀
- *
- * GitHub Pages 有两种形态，**路径前缀不同**：
- *
- * | 形态 | 站点地址 | 资源前缀 |
- * | --- | --- | --- |
- * | 项目站点（默认） | https://<user>.github.io/<repo> | `/<repo>/` |
- * | 自定义域名 | https://example.com | `/` |
- *
- * 自定义域名部署时前缀必须是 `/`：域名的根就是站点根，
- * 没有 `/<repo>/` 这一段。继续用子路径会让所有资源 404、整站白屏。
- *
- * 而"站点地址"与"资源前缀"必须同时改变 —— 所以它们由**同一个值**推导
- * （见 `site/src/lib/seo/site-config.ts`）。这里只需要把值传进去。
- *
- * 配置方式：仓库 Settings → Secrets and variables → Actions → Variables
- * 新增变量 `SITE_URL`，值为完整站点地址。
- * **不设这个变量**就按项目站点部署。
- *
- * ## 为什么部署与 CI 是两个 workflow
- *
- * CI（ci.yml）在 PR 与 main 上跑校验；部署只在 main 上跑。
- * 合成一个的话，PR 也会触发部署逻辑，得额外判断分支才能避免误发布。
- *
- * 注意：部署**不依赖** CI 成功。这是刻意的取舍：
- * 本项目的个人站点场景里，"push 到 main 就发布"更直接。
- * 若希望严格门禁，把触发改成 `workflow_run`（等 CI 完成后再部署），
- * 并在仓库里给 main 配置分支保护规则要求 CI 通过。
- */
+# 部署到 GitHub Pages。
+#
+# 为什么不用 gh-pages 分支：
+#   老做法是把构建产物推到 gh-pages 分支再让 Pages 读取。那需要仓库写权限、
+#   会污染提交历史，而且每次部署都产生一个二进制提交。
+#   现在用官方流程 upload-pages-artifact + deploy-pages：产物作为 workflow
+#   artifact 上传，由 Pages 服务直接发布 —— 不需要写仓库、历史干净，
+#   回滚就是在 Actions 里重新跑一次历史部署。
+#
+# 站点地址由仓库变量决定，而它同时决定资源前缀：
+#   GitHub Pages 有两种形态，路径前缀不同
+#     项目站点（默认）  https://<user>.github.io/<repo>   前缀 /<repo>/
+#     自定义域名        https://example.com               前缀 /
+#   自定义域名部署时前缀必须是 /：域名的根就是站点根，没有 /<repo>/ 这一段。
+#   继续用子路径会让所有资源 404、整站白屏。
+#   而"站点地址"与"资源前缀"必须同时改变 —— 所以它们由同一个值推导
+#   （见 site/src/lib/seo/site-config.ts）。这里只需要把值传进去。
+#
+#   配置方式：Settings -> Secrets and variables -> Actions -> Variables
+#   新增变量 SITE_URL，值为完整站点地址。不设这个变量就按项目站点部署。
+#
+# 为什么部署与 CI 是两个 workflow：
+#   CI（ci.yml）在 PR 与 main 上跑校验；部署只在 main 上跑。
+#   合成一个的话，PR 也会触发部署逻辑，得额外判断分支才能避免误发布。
+#
+#   注意：部署不依赖 CI 成功。这是刻意的取舍 —— 个人站点场景里
+#   "push 到 main 就发布"更直接。若希望严格门禁，把触发改成 workflow_run
+#   （等 CI 完成后再部署），并给 main 配置分支保护规则要求 CI 通过。
+#
+# 注意：YAML 的注释只能是 #。这个文件第一版以 TypeScript 风格的 /** 开头，
+# 导致整个文件无法解析、GitHub 一个工作流都没注册（Actions 页面全空）。
 name: Deploy to GitHub Pages
 
 on:
