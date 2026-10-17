@@ -10,6 +10,7 @@
 - 内容来源：`MyResume.pdf`
 - **技术学习文档：[`docs/LEARNING.md`](docs/LEARNING.md)** —— 9 章，讲清每层为什么这么写
 - 阶段路线图：[`docs/ROADMAP.md`](docs/ROADMAP.md)
+- 内容地图（改哪里 · 每个页面对应哪个文件）：[`docs/CONTENT-MAP.md`](docs/CONTENT-MAP.md)
 - 部署与自定义域名：[`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)
 
 ---
