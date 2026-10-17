@@ -13,24 +13,37 @@ nodeLinker: hoisted
 confirmModulesPurge: false
 
 # pnpm 11 blocks dependency install scripts (postinstall) by default.
-# These two need their install script to place a platform binary:
+# Every package that has one must be decided here, otherwise a FRESH install
+# (CI, or cloners) aborts with:
+#     ERR_PNPM_IGNORED_BUILDS: Ignored build scripts: <pkg>@<version>
 #
-#   esbuild - Vite's bundler, a direct devDependency.
+# This is easy to miss locally: a warm node_modules is "Already up to date",
+# so pnpm never re-evaluates the ignored-builds check. The failure only shows
+# up on a cold checkout - i.e. exactly in CI, after you pushed.
+#
+#   esbuild - Vite's bundler, a direct devDependency. Needs the script to
+#             place its platform binary.
 #
 #   sharp   - NOT a direct dependency. It comes in transitively through
 #             vite-plugin-pwa -> @vite-pwa/assets-generator. We do not use
 #             that generator: icons are produced by scripts/build-icons.ts
 #             with Python/Pillow, because sharp needs a platform-specific
 #             binary download that is blocked in restricted networks.
-#             It is listed here only so that `pnpm install` does not report
-#             unapproved build scripts and abort.
+#             Allowed only so the install does not abort.
 #
-# Warning: running `pnpm approve-builds` interactively rewrites this section
-# and can write the literal string "set this to true or false" as a value,
-# which then breaks every later install. Keep the values as real booleans.
+#   msw     - Mock Service Worker, a direct devDependency used in unit tests
+#             (msw/node only; we never use its browser worker). Its postinstall
+#             (`import('./config/scripts/postinstall.js').catch(() => void 0)`)
+#             is a no-op for us, but it still needs an explicit decision.
+#
+# Warning: when a package is undecided, pnpm writes the literal placeholder
+#     <pkg>: set this to true or false
+# into this section. That is a string, not a boolean, and it breaks every
+# later install until replaced with true/false.
 allowBuilds:
   esbuild: true
   sharp: true
+  msw: true
 
 # pnpm 11 supply-chain protection: newly published versions are not adopted
 # during an observation window. These are deliberate, exact-version exceptions
