@@ -5,11 +5,7 @@
       "summary": "我给项目写了三个自动化检查，其中\"产物分块校验\"自己错了三次。记录这个过程，以及为什么验证脚本的判据必须用真实数据核对过才能信。",
       "date": "2025-06-18",
       "updated": null,
-      "tags": [
-        "工程化",
-        "测试",
-        "踩坑记录"
-      ],
+      "tags": ["工程化", "测试", "踩坑记录"],
       "draft": false,
       "slug": "false-security-of-bad-checks",
       "readingMinutes": 3
@@ -19,11 +15,7 @@
       "summary": "简历 PDF 是 Chromium 打印导出的，字体是 Type3 矢量字形，普通解析器只能得到乱码。用 pdfjs 的文本层按坐标聚类，才把版式还原出来。",
       "date": "2025-06-14",
       "updated": null,
-      "tags": [
-        "PDF",
-        "数据处理",
-        "踩坑记录"
-      ],
+      "tags": ["PDF", "数据处理", "踩坑记录"],
       "draft": false,
       "slug": "pdf-layout-reconstruction",
       "readingMinutes": 4
@@ -33,11 +25,7 @@
       "summary": "我把 Zod 校验写进了内容加载器，用坏数据测试时构建却依然通过。查下去才发现，Vite 只做静态打包，模块顶层的 throw 永远不会在 Node 里执行。",
       "date": "2025-06-10",
       "updated": null,
-      "tags": [
-        "Vite",
-        "构建原理",
-        "踩坑记录"
-      ],
+      "tags": ["Vite", "构建原理", "踩坑记录"],
       "draft": false,
       "slug": "build-time-validation-in-vite",
       "readingMinutes": 3

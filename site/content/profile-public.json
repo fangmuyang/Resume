@@ -1,9 +1,9 @@
 {
   "name": "方睿杰",
   "aka": "方沐",
-  "headline": "前端开发方向 · 计算机应用专业在读",
-  "bio": "TODO:一句话自我介绍（PDF 里没有，建议 2-3 句，说明你在做什么、关注什么方向）",
-  "location": "TODO:所在城市，例如 杭州",
+  "headline": "计算机应用专业",
+  "bio": "你好，我是方睿杰，浙江经贸职业技术学院计算机应用专业2026届学生，专业排名前5%，曾获国家奖学金。专注前端开发，熟悉Vue、Uni-app、Python和MySQL，参与过智慧养老、编码问答、杏林智调医台等项目，负责前端实现与AI对话功能。欢迎交流与合作。",
+  "location": "杭州",
   "availability": "寻找前端开发方向实习机会",
   "avatar": null,
   "builtWith": "React 19 + TypeScript + Vite",
