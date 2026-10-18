@@ -20,6 +20,11 @@
     "items": ["操作系统", "数据结构与算法", "计算机网络", "系统运维", "Git", "Docker"]
   },
   {
+    "id": "design",
+    "label": "设计与原型",
+    "items": ["Figma", "Adobe Photoshop", "Adobe Illustrator"]
+  },
+  {
     "id": "office",
     "label": "办公效率",
     "items": ["Microsoft Word", "Excel", "PowerPoint"]
