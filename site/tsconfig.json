@@ -33,7 +33,6 @@
     "noEmit": true,
 
     /* ---- path alias (keep in sync with resolve.alias in vite.config.ts) ---- */
-    "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"]
     }
