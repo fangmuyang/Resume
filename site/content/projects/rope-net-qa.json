@@ -1,7 +1,7 @@
 {
   "slug": "rope-net-qa",
   "name": "绳网问答",
-  "summary": "TODO:一句话简介，用于作品集卡片",
+  "summary": "学习了通义千问api的调用，完成了uniapp的前端样式实现。",
   "listIntro": null,
   "role": "核心开发者",
   "period": {
